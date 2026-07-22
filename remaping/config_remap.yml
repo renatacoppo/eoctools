@@ -1,0 +1,16 @@
+cdo_path: /usr/local/apps/cdo/2.4.0/bin/cdo
+
+base_output: /lus/h2resw01/hpcperm/ecme3497/data-analysis/epochal/
+
+experiments:
+  PV19: /lus/h2resw01/scratch/ecme3497/ece4/PV19/output/
+
+variables:
+  atmosphere: tas,pr,rsut,rlut,rsdt
+  ocean: tos,sos
+
+filters:
+  atm_remap: "_1m_"
+  oce_remap: "oce_1m_T"
+  atm_filename: "atm_cmip6_1m"
+  atm_exclude: "_pl_"

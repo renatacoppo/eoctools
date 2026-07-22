@@ -1,0 +1,70 @@
+[ECMWF-INFO -sbatch] - -------------------------------------------------------------------------------------
+[ECMWF-INFO -sbatch] -  This is the ECMWF jobfilter
+[ECMWF-INFO -sbatch] -  +++ Please report issues using the Support portal +++
+[ECMWF-INFO -sbatch] -  +++ https://support.ecmwf.int                     +++
+[ECMWF-INFO -sbatch] -  /usr/local/bin/ecsbatch: size: 54473, mtime: Mon Jun 29 15:34:27 2026
+[ECMWF-INFO -sbatch] - -------------------------------------------------------------------------------------
+[ECMWF-INFO -sbatch] - Time at submit: Tue Jul 21 10:12:43 2026 (1784628763.4500892) on ac6-101.bullx:/lus/h2resw01/hpcperm/ecme3497/data-analysis/epochal/remaping
+[ECMWF-INFO -sbatch] - --- SLURM VARIABLES ---
+[ECMWF-INFO -sbatch] - EC_CLUSTER=ac
+[ECMWF-INFO -sbatch] - SLURM_EXPORT_ENV=ALL
+[ECMWF-INFO -sbatch] - SBATCH_EXPORT=NONE
+[ECMWF-INFO -sbatch] - -----------------------
+[ECMWF-INFO -sbatch] - jobscript: /lus/h2resw01/hpcperm/ecme3497/data-analysis/epochal/remaping/run_remap.sh
+[ECMWF-INFO -sbatch] - --- SCRIPT OPTIONS ---
+[ECMWF-INFO -sbatch] - -----------------------
+[ECMWF-INFO -sbatch] - --- POST-PROCESSED OPTIONS ---
+[ECMWF-INFO -sbatch] - ARG --positional=['run_remap.sh']
+[ECMWF-INFO -sbatch] - ------------------------------
+[ECMWF-INFO -sbatch] - No qos requested, assuming qos=nf
+[ECMWF-INFO -sbatch] - jobtag: ecme3497-run_remap.sh-1x2-/lus/h2resw01/hpcperm/ecme3497/data-analysis/epochal/remaping/slurm-_JOBID_.out
+[ECMWF-INFO -sbatch] - ['/usr/bin/sbatch', '--qos=nf', '--licenses=h2resw01', '--time=1-00:00:00', '/lus/h2resw01/hpcperm/ecme3497/data-analysis/epochal/remaping/run_remap.sh']
+[ECMWF-INFO -sbatch] - sbatch executed on ac
+[ECMWF-INFO -sbatch] - Job queued on ac using method local
+[ECMWF-INFO -sbatch] - Submitted batch job 31533808
+[ECMWF-INFO -ecprofile] /usr/bin/bash NON_INTERACTIVE on ac6-134 at 20260721_101250.280, PID: 1960569, JOBID: 31533808
+[ECMWF-INFO -ecprofile] $SCRATCH=/ec/res4/scratch/ecme3497
+[ECMWF-INFO -ecprofile] $PERM=/perm/ecme3497
+[ECMWF-INFO -ecprofile] $HPCPERM=/ec/res4/hpcperm/ecme3497
+[ECMWF-INFO -ecprofile] $TMPDIR=/etc/ecmwf/ssd/ssd1/tmpdirs/ecme3497.31533808
+[ECMWF-INFO -ecprofile] $SCRATCHDIR=/ec/res4/scratchdir/ecme3497/0/31533808
+Lmod has detected the following error: The following module(s) are unknown:
+"python"
+
+Please check the spelling or version number. Also try "module spider ..."
+It is also possible your cache file is out-of-date; it may help to try:
+  $ module --ignore_cache load "python"
+
+Also make sure that all modulefiles written in TCL start with the string
+#%Module
+
+
+
+/var/spool/slurmd/job31533808/slurm_script: line 8: python: command not found
+[ECMWF-INFO -ecepilog] ----------------------------------------------------------------------------------------------------
+[ECMWF-INFO -ecepilog] This is the ECMWF job Epilogue
+[ECMWF-INFO -ecepilog] +++ Please report issues using the Support portal +++
+[ECMWF-INFO -ecepilog] +++ https://support.ecmwf.int                     +++
+[ECMWF-INFO -ecepilog] ----------------------------------------------------------------------------------------------------
+[ECMWF-INFO -ecepilog] Run at 2026-07-21T10:12:54 on ac
+[ECMWF-INFO -ecepilog] JobName                   : run_remap.sh
+[ECMWF-INFO -ecepilog] JobID                     : 31533808
+[ECMWF-INFO -ecepilog] Submit                    : 2026-07-21T10:12:43
+[ECMWF-INFO -ecepilog] Start                     : 2026-07-21T10:12:45
+[ECMWF-INFO -ecepilog] End                       : 2026-07-21T10:12:54
+[ECMWF-INFO -ecepilog] QueuedTime                : 2.0
+[ECMWF-INFO -ecepilog] ElapsedRaw                : 9
+[ECMWF-INFO -ecepilog] ExitCode                  : 127:0
+[ECMWF-INFO -ecepilog] DerivedExitCode           : 0:0
+[ECMWF-INFO -ecepilog] State                     : FAILED
+[ECMWF-INFO -ecepilog] Account                   : spitsozz
+[ECMWF-INFO -ecepilog] QOS                       : nf
+[ECMWF-INFO -ecepilog] User                      : ecme3497
+[ECMWF-INFO -ecepilog] StdOut                    : /lus/h2resw01/hpcperm/ecme3497/data-analysis/epochal/remaping/slurm-31533808.out
+[ECMWF-INFO -ecepilog] StdErr                    : /lus/h2resw01/hpcperm/ecme3497/data-analysis/epochal/remaping/slurm-31533808.out
+[ECMWF-INFO -ecepilog] NNodes                    : 1
+[ECMWF-INFO -ecepilog] NCPUS                     : 2
+[ECMWF-INFO -ecepilog] SBU                       : 0.043
+[ECMWF-INFO -ecepilog] jobtag                    : ecme3497-run_remap.sh-1x2-/lus/h2resw01/hpcperm/ecme3497/data-analysis/epochal/remaping/slurm-_JOBID_.out
+[ECMWF-INFO -ecepilog] ----------------------------------------------------------------------------------------------------
+
