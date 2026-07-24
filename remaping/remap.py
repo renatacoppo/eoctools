@@ -4,14 +4,25 @@ from cdo import Cdo
 import argparse
 
 
-def remap_files(cdo, input_folder, output_folder, file_filter):
+def remap_files(cdo, input_folder, output_folder, file_filter, method="remapbil"):
     """
-    Remap netCDF files to 1°x1° grid using nearest neighbor.
+    Remap netCDF files to a 2°×2° grid.
+
+    Parameters
+    ----------
+    input_folder : str
+        Folder containing input NetCDF files.
+    output_folder : str
+        Folder for remapped files.
+    file_filter : str
+        String that must appear in the filename.
+    method : str
+        CDO remapping operator: "remapcon", "remapbil", "remapnn", etc.
     """
+
     os.makedirs(output_folder, exist_ok=True)
 
     for filename in os.listdir(input_folder):
-
         if filename.endswith(".nc") and file_filter in filename:
 
             input_file = os.path.join(input_folder, filename)
@@ -19,11 +30,27 @@ def remap_files(cdo, input_folder, output_folder, file_filter):
 
             if not os.path.exists(output_file):
 
-                cdo.remapnn("r180x90", input=input_file, output=output_file)
-                print(f"Remapped: {filename}")
+                if method == "remapcon":
+                    cdo.remapcon(
+                        "r180x90",
+                        input=input_file,
+                        output=output_file
+                    )
+
+                elif method == "remapbil":
+                    cdo.remapbil(
+                        "r180x90",
+                        input=input_file,
+                        output=output_file
+                    )
+
+                else:
+                    raise ValueError(f"Unknown remapping method: {method}")
+
+                print(f"✅ Remapped: {filename}")
 
             else:
-                print(f"Skipped: {filename}")
+                print(f"⏩ Skipped (already exists): {filename}")
 
 
 def extract_variables(input_folder, output_folder, variables,
@@ -78,7 +105,8 @@ def main(config_file):
             cdo,
             input_folder=os.path.join(input_base, "oifs"),
             output_folder=os.path.join(base_output, exp_name, "remapped/oifs"),
-            file_filter=filters["atm_remap"]
+            file_filter=filters["atm_remap"],
+            method="remapcon"
         )
 
         # OCE remap
@@ -86,7 +114,8 @@ def main(config_file):
             cdo,
             input_folder=os.path.join(input_base, "nemo"),
             output_folder=os.path.join(base_output, exp_name, "remapped/nemo"),
-            file_filter=filters["oce_remap"]
+            file_filter=filters["oce_remap"],
+            method="remapbil"
         )
 
         # ATM variables

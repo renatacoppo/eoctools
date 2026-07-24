@@ -7,10 +7,12 @@ experiments:
 
 variables:
   atmosphere: tas,pr,rsut,rlut,rsdt
-  ocean: tos,sos
+  ocean: tos,sos, zos, so
+  ocean_2: msftyz
 
 filters:
   atm_remap: "_1m_"
   oce_remap: "oce_1m_T"
+  oce_2_remap: "oce_1m_diaptr3d_"
   atm_filename: "atm_cmip6_1m"
   atm_exclude: "_pl_"
