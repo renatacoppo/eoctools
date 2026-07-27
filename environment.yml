@@ -1,0 +1,25 @@
+# Create the eocene environment:
+# mamba env create -f environment.yml 
+# or 
+# conda env create -f environment.yml
+
+name : edata
+channels:
+  - conda-forge
+dependencies:
+  - python>=3.9,<3.15
+  - xarray
+  - netcdf4
+  - dask
+  - numpy
+  - pandas
+  - cdo
+  - pip
+
+  # Configuration
+  - pyyaml
+  # Visualization
+  - matplotlib
+  # Python packages
+  - pip:
+    - -e .

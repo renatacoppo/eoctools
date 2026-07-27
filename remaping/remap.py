@@ -1,84 +1,224 @@
+#!/usr/bin/env python
+"""Command-line interface for running the remaping of the eocene_prospoccesing workflow."""
+
 import os
-import yaml
-from cdo import Cdo
+import glob
+import re
+import tempfile
+import common.yaml as yaml
 import argparse
+from common import load_yaml
+import xarray as xr
+from cdo import Cdo
 
 
-def remap_files(cdo, input_folder, output_folder, file_filter, method="remapbil"):
+def extract_year(filename):
     """
-    Remap netCDF files to a 2°×2° grid.
+    Extract first year from filenames:
+    """
+
+    match = re.search(r"(\d{4})-\d{4}", filename)
+
+    if match:
+        return int(match.group(1))
+
+    raise ValueError(
+        f"Could not extract year from {filename}"
+    )
+
+def process_dataset(cdo,input_folder,output_folder,filename_filter,variables,remap_method,output_prefix,exclude_filter=None,grid="r180x90"):
+    """
+    Select variables, calculate annual means, remap,
+    concatenate all years and write one NetCDF file.
 
     Parameters
     ----------
     input_folder : str
-        Folder containing input NetCDF files.
+        Folder containing monthly files.
+
     output_folder : str
-        Folder for remapped files.
-    file_filter : str
-        String that must appear in the filename.
-    method : str
-        CDO remapping operator: "remapcon", "remapbil", "remapnn", etc.
+        Where the final file is written.
+
+    filename_filter : str
+        String identifying input files.
+
+    variables : str
+        Variables separated by commas.
+
+    remap_method : str
+        "remapcon" or "remapbil".
+
+    output_prefix : str
+        Final filename prefix.
+        Example: "atm" or "oce"
+
+    exclude_filter : str
+        Files containing this string are ignored.
+
+    grid : str
+        CDO target grid.
+        r180x90 = 2° x 2°
     """
 
     os.makedirs(output_folder, exist_ok=True)
 
-    for filename in os.listdir(input_folder):
-        if filename.endswith(".nc") and file_filter in filename:
+    files = sorted(
+        glob.glob(
+            os.path.join(
+                input_folder,
+                f"*{filename_filter}*.nc"
+            )
+        )
+    )
 
-            input_file = os.path.join(input_folder, filename)
-            output_file = os.path.join(output_folder, f"remapped_{filename}")
+    if exclude_filter:
 
-            if not os.path.exists(output_file):
+        files = [
+            f for f in files
+            if exclude_filter not in os.path.basename(f)
+        ]
 
-                if method == "remapcon":
-                    cdo.remapcon(
-                        "r180x90",
-                        input=input_file,
-                        output=output_file
-                    )
+    if len(files) == 0:
+        print("No files found.")
+        return
 
-                elif method == "remapbil":
-                    cdo.remapbil(
-                        "r180x90",
-                        input=input_file,
-                        output=output_file
-                    )
+    print(f"Found {len(files)} files for {output_prefix}")
 
-                else:
-                    raise ValueError(f"Unknown remapping method: {method}")
+    annual_list = []
+    years = []
 
-                print(f"✅ Remapped: {filename}")
+    for infile in files:
 
-            else:
-                print(f"⏩ Skipped (already exists): {filename}")
+        filename = os.path.basename(infile)
+        print(f"Processing {filename}")
 
+        year = extract_year(filename)
+        years.append(year)
 
-def extract_variables(input_folder, output_folder, variables,
-                      cdo, filename_filter=None, exclude_filter=None):
+        # temporary files
+        tmp_file = tempfile.NamedTemporaryFile(
+            suffix=".nc",
+            delete=False
+        ).name
+
+        cdo_command = (
+            f"-{remap_method},{grid} "
+            f"-yearmean "
+            f"-selname,{variables} "
+            f"{infile}"
+        )
+
+        cdo.copy(
+            input=cdo_command,
+            output=tmp_file
+        )
+        with xr.open_dataset(tmp_file) as ds:
+
+            annual = ds.load()
+
+        annual_list.append(annual)
+
+        # remove temporary file
+        os.remove(tmp_file)
+
+    final = xr.concat(
+        annual_list,
+        dim="time_counter"
+    )
+
+    first_year = min(years)
+    last_year = max(years)
+
+    output_file = os.path.join(
+        output_folder,
+        f"{output_prefix}_annual_mean_{first_year}-{last_year}.nc"
+    )
+
+    if os.path.exists(output_file):
+        print(f"Already exists: {output_file}")
+        return
+
+    final.to_netcdf(output_file)
+
+    print(
+        f"\n Saved: {output_file}"
+    )
+
+def annual_mean_moc(input_folder, output_folder,
+                    filename_filter, variables):
+    """
+    Compute annual means for zonal-mean diagnostics (msftyz), and save a single output file.
+
+    Parameters
+    ----------
+    input_folder : str
+        Folder containing the original NEMO monthly files.
+
+    output_folder : str
+        Folder where the final file will be written.
+
+    filename_filter : str
+        Pattern identifying the desired files.
+        
+    variables : list[str]
+        Variables to retain.
+    """
 
     os.makedirs(output_folder, exist_ok=True)
 
-    for filename in os.listdir(input_folder):
+    files = sorted(
+        glob.glob(os.path.join(input_folder, f"*{filename_filter}*.nc"))
+    )
 
-        if not filename.endswith(".nc"):
-            continue
+    if len(files) == 0:
+        print("No matching files found.")
+        return
 
-        if filename_filter and filename_filter not in filename:
-            continue
+    annual_list = []
 
-        if exclude_filter and exclude_filter in filename:
-            continue
+    years = []
 
-        infile = os.path.join(input_folder, filename)
-        outfile = os.path.join(output_folder, f"small_{filename}")
+    for file in files:
 
-        if not os.path.exists(outfile):
+        print(f"Processing {os.path.basename(file)}")
 
-            cdo.selname(variables, input=infile, output=outfile)
-            print(f"Extracted vars from {filename}")
+        with xr.open_dataset(file) as ds:
 
-        else:
-            print(f"Skipped: {filename}")
+            annual = (
+                ds[variables]
+                .mean(dim="time_counter", keep_attrs=True)
+                .expand_dims(
+                    time_counter=[ds.time_counter.values[0]]
+                )
+            )
+
+            # Load the small annual dataset into memory so
+            # the file can be closed immediately.
+            annual.load()
+
+            annual_list.append(annual)
+
+        # Extract year from filename
+        match = re.search(r"(\d{4})-(\d{4})", os.path.basename(file))
+        if match:
+            years.append(int(match.group(1)))
+
+    # Concatenate all annual means
+    final = xr.concat(annual_list, dim="time_counter")
+
+    first_year = min(years)
+    last_year = max(years)
+
+    var_string = "_".join(variables)
+
+    output_file = os.path.join(
+        output_folder,
+        f"moc_annual_mean_{first_year}-{last_year}.nc"
+    )
+
+    final.to_netcdf(output_file)
+
+    print(f"\n Saved {output_file}")
 
 
 def main(config_file):
@@ -93,48 +233,59 @@ def main(config_file):
 
     atm_vars = config["variables"]["atmosphere"]
     oce_vars = config["variables"]["ocean"]
+    moc_vars = config["variables"]["moc"]
 
     filters = config["filters"]
 
     for exp_name, input_base in experiments.items():
 
-        print(f"\n===== {exp_name} =====\n")
+        print(f"\n================ {exp_name} ================\n")
 
-        # ATM remap
-        remap_files(
-            cdo,
-            input_folder=os.path.join(input_base, "oifs"),
-            output_folder=os.path.join(base_output, exp_name, "remapped/oifs"),
-            file_filter=filters["atm_remap"],
-            method="remapcon"
-        )
-
-        # OCE remap
-        remap_files(
-            cdo,
+        # Moc
+        annual_mean_moc(
             input_folder=os.path.join(input_base, "nemo"),
-            output_folder=os.path.join(base_output, exp_name, "remapped/nemo"),
-            file_filter=filters["oce_remap"],
-            method="remapbil"
-        )
+            output_folder=os.path.join(base_output, exp_name, "processed"),
+            filename_filter=filters["moc"],
+            variables=moc_vars
+        ) 
 
-        # ATM variables
-        extract_variables(
-            input_folder=os.path.join(base_output, exp_name, "remapped/oifs"),
-            output_folder=os.path.join(base_output, exp_name, "variables/atm"),
+        # Atmosphere
+        process_dataset(
+            cdo=cdo,
+            input_folder=os.path.join(
+                input_base,
+                "oifs"
+            ),
+            output_folder=os.path.join(
+                base_output,
+                exp_name,
+                "processed"
+            ),
+            filename_filter=filters["atm"],
             variables=atm_vars,
-            filename_filter=filters["atm_filename"],
-            exclude_filter=filters["atm_exclude"],
-            cdo=cdo
+            remap_method="remapcon",
+            output_prefix="atm",
+            exclude_filter=filters["atm_exclude"]
         )
 
-        # OCE variables
-        extract_variables(
-            input_folder=os.path.join(base_output, exp_name, "remapped/nemo"),
-            output_folder=os.path.join(base_output, exp_name, "variables/oce"),
+        # Ocean
+        process_dataset(
+            cdo=cdo,
+            input_folder=os.path.join(
+                input_base,
+                "nemo"
+            ),
+            output_folder=os.path.join(
+                base_output,
+                exp_name,
+                "processed"
+            ),
+            filename_filter=filters["oce"],
             variables=oce_vars,
-            cdo=cdo
+            remap_method="remapbil",
+            output_prefix="oce"
         )
+
 
 
 if __name__ == "__main__":
@@ -148,5 +299,6 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+    config = load_yaml(args.config)
 
     main(args.config)
