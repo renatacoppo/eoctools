@@ -1,21 +1,17 @@
-# eoctools
-
-Eocene Tools
+# Eocene tools
 
 Eocene Tools is a Python package for processing and analysing output from Earth System Model (ESM) simulations, with an initial focus on EC-Earth experiments of Eocene climates.
 
 ## Repository structure
 eocene_tools/
-├── common/
-│   ├── utils.py
-│   └── yaml.py
-│
-├── remapping/
-│   ├── remap.py
-│   ├── config_remap.yml
-│   └── run_remap.job
-│
-└── data_analysis/
+    common/
+        utils.py
+        yaml.py
+    remapping/
+        remap.py
+        config_remap.yml
+        run_remap.job
+    data_analysis/
 
 ## Requirements
 You need:
