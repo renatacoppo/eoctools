@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "eoctools"
+version = "0.0.1"
+authors = [
+  { name="Renata Coppo", email="renatacoppo@cnr.it" },
+  { name="Paolo Davini", email="paolo.davini@cnr.it" }
+]
+description = "Tools for processing and analysing Eocene climate simulations"
+requires-python = ">=3.9"
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "numpy",
+    "xarray",
+    "pandas",
+    "pyyaml",
+    "cdo",
+    "matplotlib",
+    "netcdf4",
+    "cartopy",
+    "dask"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/renatacoppo/eocene_postprocessing"
+"Bug Tracker" = "https://github.com/renatacoppo/eocene_postprocessing/issues"
+"Repository" = "https://github.com/renatacoppo/eocene_postprocessing"
+
+[tool.setuptools]
+packages = ["eoctools"]

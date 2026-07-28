@@ -5,12 +5,11 @@ import os
 import glob
 import re
 import tempfile
-import common.yaml as yaml
 import argparse
-from common import load_yaml
 import xarray as xr
 from cdo import Cdo
 
+from eoctools.common.yaml import load_yaml
 
 def extract_year(filename):
     """
@@ -223,8 +222,8 @@ def annual_mean_moc(input_folder, output_folder,
 
 def main(config_file):
 
-    with open(config_file) as f:
-        config = yaml.safe_load(f)
+    
+    config = load_yaml(config_file)
 
     cdo = Cdo(cdo=config["cdo_path"])
 
