@@ -32,9 +32,9 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/renatacoppo/eocene_postprocessing"
-"Bug Tracker" = "https://github.com/renatacoppo/eocene_postprocessing/issues"
-"Repository" = "https://github.com/renatacoppo/eocene_postprocessing"
+"Homepage" = "https://github.com/renatacoppo/eoctools"
+"Bug Tracker" = "https://github.com/renatacoppo/eoctools/issues"
+"Repository" = "https://github.com/renatacoppo/eoctools"
 
 [tool.setuptools]
 packages = ["eoctools"]
