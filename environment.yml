@@ -13,6 +13,7 @@ dependencies:
   - dask
   - numpy
   - pandas
+  - cmocean
   - cdo
   - pip
 
