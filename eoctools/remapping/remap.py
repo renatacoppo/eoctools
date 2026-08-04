@@ -111,7 +111,11 @@ def process_dataset(cdo,input_folder,output_folder,filename_filter,variables,rem
             input=cdo_command,
             output=tmp_file
         )
-        with xr.open_dataset(tmp_file) as ds:
+        with xr.open_dataset(
+            tmp_file,
+            use_cftime=True,
+            decode_times=True
+        ) as ds:
 
             annual = ds.load()
 
@@ -137,7 +141,15 @@ def process_dataset(cdo,input_folder,output_folder,filename_filter,variables,rem
         print(f"Already exists: {output_file}")
         return
 
-    final.to_netcdf(output_file)
+    final.to_netcdf(
+        output_file,
+        encoding={
+            "time_counter": {
+                "calendar": "gregorian",
+                "units": "days since 1850-01-01"
+            }
+        }
+    )
 
     print(
         f"\n Saved: {output_file}"
@@ -181,7 +193,10 @@ def annual_mean_moc(input_folder, output_folder,
 
         print(f"Processing {os.path.basename(file)}")
 
-        with xr.open_dataset(file) as ds:
+        with xr.open_dataset(
+            file,
+            use_cftime=True
+        ) as ds:
 
             annual = (
                 ds[variables]
@@ -215,7 +230,15 @@ def annual_mean_moc(input_folder, output_folder,
         f"moc_annual_mean_{first_year}-{last_year}.nc"
     )
 
-    final.to_netcdf(output_file)
+    final.to_netcdf(
+        output_file,
+        encoding={
+            "time_counter": {
+                "calendar": "gregorian",
+                "units": "days since 1850-01-01"
+            }
+        }
+    )
 
     print(f"\n Saved {output_file}")
 

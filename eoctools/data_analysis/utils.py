@@ -1,9 +1,28 @@
 import xarray as xr
 import numpy as np
 from pathlib import Path
+import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
+from cartopy.util import add_cyclic_point
 
 # open datasets
-def load_last_years(base_path, pattern, nyears=None, which="last", time_dim="time_counter"):
+def load_last_years(file_path, nyears=100, time_dim="time_counter"):
+
+    ds = xr.open_dataset(file_path)
+
+    last_year = ds[time_dim].dt.year.max().item()
+    first_year = last_year - nyears + 1
+
+    ds = ds.sel(
+        {time_dim: slice(
+            f"{first_year}-01-01",
+            f"{last_year}-12-31"
+        )}
+    )
+
+    return ds
+
+def load_last_years_old(base_path, pattern, nyears=None, which="last", time_dim="time_counter"):
 
     full_pattern = base_path / pattern
     files = sorted(full_pattern.parent.glob(full_pattern.name))
@@ -257,3 +276,596 @@ def global_toa_ts(ds):
     net_gm = net_ann.weighted(weights).mean(("lat", "lon"))
 
     return net_gm
+
+def calculate_ecs(global_means, co2_levels):
+    """
+    Calculate ECS from a linear fit of global mean temperature
+    against log2(CO2).
+
+    Parameters
+    ----------
+    global_means : dict
+        Experiment names and global mean temperatures.
+
+    co2_levels : dict
+        Experiment names and CO2 multipliers.
+
+    Returns
+    -------
+    ecs : float
+        Temperature response per CO2 doubling.
+    """
+
+    co2 = np.array(
+        [
+            co2_levels[k]
+            for k in global_means
+        ]
+    )
+
+    temps = np.array(
+        [
+            float(global_means[k])
+            for k in global_means
+        ]
+    )
+
+    x = np.log2(co2)
+
+    slope, intercept = np.polyfit(
+        x,
+        temps,
+        1
+    )
+
+    return slope
+
+
+### -------------------------- ###
+###     Plotting functions     ###
+### -------------------------- ###
+
+def plot_reference_anomalies(
+    reference, 
+    anomalies,
+    reference_name="pi",
+    absolute_title="Mean",
+    anomaly_title="Anomaly",
+    absolute_levels=None,
+    anomaly_levels=None,
+    absolute_cmap="viridis",
+    anomaly_cmap="RdBu_r",
+    absolute_label="",
+    anomaly_label="",
+    figsize_height=5,
+    dpi=150,
+    save=None,
+):
+    """
+    Plot one reference map and anomalies relative to it.
+
+    Parameters
+    ----------
+    reference : xarray.DataArray
+        2D (lat, lon) reference field.
+
+    anomalies : dict[str, xarray.DataArray]
+        Dictionary of anomaly fields.
+
+    reference_name : str
+        Name displayed in first panel.
+
+    absolute_title : str
+        Title of reference panel.
+
+    anomaly_title : str
+        Suffix for anomaly titles.
+
+    absolute_levels, anomaly_levels : array-like
+        Contour levels.
+
+    absolute_cmap, anomaly_cmap
+        Colormaps.
+
+    absolute_label, anomaly_label : str
+        Colorbar labels.
+
+    save : str or Path, optional
+        Output filename.
+    """
+
+    experiments = list(anomalies.keys())
+    nexp = len(experiments)
+
+    fig, axes = plt.subplots(
+        1,
+        nexp + 1,
+        figsize=(6 * (nexp + 1), figsize_height),
+        dpi=dpi,
+        constrained_layout=True,
+        subplot_kw={"projection": ccrs.Robinson()},
+    )
+
+    if nexp == 1:
+        axes = np.asarray(axes)
+
+    # ---------------- reference ----------------
+
+    ref_cyc, lon_cyc = add_cyclic_point(
+        reference,
+        coord=reference.lon,
+    )
+
+    cf_ref = axes[0].contourf(
+        lon_cyc,
+        reference.lat,
+        ref_cyc,
+        levels=absolute_levels,
+        cmap=absolute_cmap,
+        transform=ccrs.PlateCarree(),
+        extend="both",
+    )
+
+    axes[0].set_title(f"{reference_name}: {absolute_title}")
+    axes[0].set_global()
+
+    # ---------------- anomalies ----------------
+
+    for i, exp in enumerate(experiments, start=1):
+
+        da = anomalies[exp]
+
+        da_cyc, lon_cyc = add_cyclic_point(
+            da,
+            coord=da.lon,
+        )
+
+        cf_anom = axes[i].contourf(
+            lon_cyc,
+            da.lat,
+            da_cyc,
+            levels=anomaly_levels,
+            cmap=anomaly_cmap,
+            transform=ccrs.PlateCarree(),
+            extend="both",
+        )
+
+        axes[i].set_title(f"{exp}: {anomaly_title}")
+        axes[i].set_global()
+
+    # ---------------- colorbars ----------------
+
+    cbar1 = fig.colorbar(
+        cf_ref,
+        ax=axes[0],
+        orientation="horizontal",
+        shrink=0.8,
+        pad=0.08,
+    )
+    cbar1.set_label(absolute_label)
+
+    cbar2 = fig.colorbar(
+        cf_anom,
+        ax=axes[1:],
+        orientation="horizontal",
+        shrink=0.8,
+        pad=0.08,
+    )
+    cbar2.set_label(anomaly_label)
+
+    if save is not None:
+        plt.savefig(save, bbox_inches="tight")
+
+    plt.show()
+
+def plot_mean_map(
+    field,
+    experiment,
+    title,
+    levels,
+    cmap,
+    colorbar_label,
+    figsize=(10, 5),
+    dpi=150,
+    save=None,
+):
+    """
+    Plot a single global mean field.
+
+    Parameters
+    ----------
+    field : xarray.DataArray
+        Two-dimensional (lat, lon) field.
+
+    experiment : str
+        Experiment name (e.g. "pi", "x3").
+
+    title : str
+        Variable title.
+
+    levels : array-like
+        Contour levels.
+
+    cmap : matplotlib colormap
+
+    colorbar_label : str
+
+    save : str or Path, optional
+    """
+
+    fig, ax = plt.subplots(
+        figsize=figsize,
+        dpi=dpi,
+        constrained_layout=True,
+        subplot_kw={"projection": ccrs.Robinson()},
+    )
+
+    field_cyc, lon_cyc = add_cyclic_point(
+        field,
+        coord=field.lon,
+    )
+
+    cf = ax.contourf(
+        lon_cyc,
+        field.lat,
+        field_cyc,
+        levels=levels,
+        cmap=cmap,
+        transform=ccrs.PlateCarree(),
+        extend="both",
+    )
+
+    ax.set_title(f"{experiment}: {title}")
+    ax.set_global()
+
+    cbar = fig.colorbar(
+        cf,
+        ax=ax,
+        orientation="horizontal",
+        shrink=0.8,
+        pad=0.08,
+    )
+
+    cbar.set_label(colorbar_label)
+
+    if save is not None:
+        plt.savefig(save, bbox_inches="tight")
+
+    plt.show()
+
+def plot_zonal_mean(
+    field,
+    experiment,
+    title,
+    ylabel,
+    save=None,
+    figsize=(9, 5),
+    dpi=300,
+):
+    """
+    Plot zonal mean as a function of latitude.
+
+    Parameters
+    ----------
+    field : xarray.DataArray
+        Zonal mean field with dimension (lat).
+
+    experiment : str
+        Experiment name (e.g. "pi", "x3").
+
+    title : str
+        Plot title.
+
+    ylabel : str
+        Y-axis label.
+
+    save : str or Path, optional
+        Output filename.
+    """
+
+    plt.figure(
+        figsize=figsize,
+        dpi=dpi
+    )
+
+    plt.plot(
+        field.lat,
+        field,
+        linewidth=2.2,
+        label=experiment
+    )
+
+    plt.xlabel("Latitude")
+    plt.ylabel(ylabel)
+
+    plt.title(title)
+
+    plt.legend()
+
+    plt.grid(
+        True,
+        linestyle="--",
+        alpha=0.4
+    )
+
+    plt.tight_layout()
+
+    if save is not None:
+        plt.savefig(
+            save,
+            bbox_inches="tight"
+        )
+
+    plt.show()
+
+def plot_zonal_anomalies(
+    anomalies,
+    title,
+    ylabel,
+    save=None,
+    figsize=(9, 5),
+    dpi=300,
+):
+    """
+    Plot zonal mean anomalies as a function of latitude.
+
+    Parameters
+    ----------
+    anomalies : dict[str, xarray.DataArray]
+        Dictionary containing anomaly fields.
+
+    title : str
+        Plot title.
+
+    ylabel : str
+        Y-axis label.
+
+    save : str or Path, optional
+        Output filename.
+    """
+
+    plt.figure(
+        figsize=figsize,
+        dpi=dpi
+    )
+
+    for exp, da in anomalies.items():
+
+        plt.plot(
+            da.lat,
+            da,
+            linewidth=2.2,
+            label=exp
+        )
+
+    plt.axhline(
+        0,
+        color="k",
+        linestyle="--",
+        linewidth=1
+    )
+
+    plt.xlabel("Latitude")
+    plt.ylabel(ylabel)
+
+    plt.title(title)
+
+    plt.legend()
+
+    plt.grid(
+        True,
+        linestyle="--",
+        alpha=0.4
+    )
+
+    plt.tight_layout()
+
+    if save is not None:
+        plt.savefig(
+            save,
+            bbox_inches="tight"
+        )
+
+    plt.show()
+
+def plot_zonal_time(
+    field,
+    experiment,
+    title,
+    cmap,
+    colorbar_label,
+    levels=20,
+    save=None,
+    figsize=(10, 5),
+    dpi=150,
+):
+    """
+    Plot zonal mean time evolution (latitude vs time).
+
+    Parameters
+    ----------
+    field : xarray.DataArray
+        Zonal mean field with dimensions (time_counter, lat).
+
+    experiment : str
+        Experiment name.
+
+    title : str
+        Plot title.
+
+    cmap : matplotlib colormap
+        Colormap.
+
+    colorbar_label : str
+        Colorbar label.
+
+    levels : int or array-like
+        Number of contour levels or explicit levels.
+
+    save : str or Path, optional
+        Output filename.
+    """
+
+    fig, ax = plt.subplots(
+        figsize=figsize,
+        dpi=dpi
+    )
+
+    cf = ax.contourf(
+        field.time_counter,
+        field.lat,
+        field.T,
+        levels=levels,
+        cmap=cmap,
+        extend="both"
+    )
+
+    cbar = fig.colorbar(
+        cf,
+        ax=ax,
+        orientation="vertical"
+    )
+
+    cbar.set_label(colorbar_label)
+
+    ax.set_xlabel("Year")
+    ax.set_ylabel("Latitude")
+
+    ax.set_title(
+        f"{experiment}: {title}"
+    )
+
+    plt.tight_layout()
+
+    if save is not None:
+        plt.savefig(
+            save,
+            bbox_inches="tight"
+        )
+
+    plt.show()
+
+
+def plot_global_mean_vs_co2(
+    values,
+    co2_levels,
+    ecs=None,
+    ylabel="Global mean temperature (°C)",
+    xlabel="CO₂ (× pre-industrial)",
+    title=None,
+    ylim=None,
+    xlim=None,
+    figsize=(6, 4),
+    dpi=300,
+    save=None,
+):
+    """
+    Plot global mean value as a function of CO2 concentration.
+
+    Parameters
+    ----------
+    values : dict
+        Dictionary with experiment names as keys and scalar xarray DataArrays
+        as values.
+
+        Example:
+        {
+            "pi": 14.5,
+            "x3": 22.3,
+            "x6": 31.1
+        }
+
+    co2_levels : dict
+        Dictionary mapping experiments to CO2 multipliers.
+
+        Example:
+        {
+            "pi": 1,
+            "x3": 3,
+            "x6": 6
+        }
+
+    ylabel : str
+        Y-axis label.
+
+    xlabel : str
+        X-axis label.
+
+    title : str, optional
+        Plot title.
+
+    ylim : tuple, optional
+        Y-axis limits.
+
+    xlim : tuple, optional
+        X-axis limits.
+
+    save : str or Path, optional
+        Output filename.
+    """
+
+    plt.figure(
+        figsize=figsize,
+        dpi=dpi
+    )
+
+    for exp, value in values.items():
+
+        co2 = co2_levels[exp]
+
+        value = float(value)
+
+        plt.scatter(
+            co2,
+            value,
+            s=80,
+            label=f"{exp}: {value:.2f}"
+        )
+
+        plt.text(
+            co2,
+            value + 0.15,
+            exp,
+            ha="center"
+        )
+
+    if xlim is not None:
+        plt.xlim(*xlim)
+
+    if ylim is not None:
+        plt.ylim(*ylim)
+
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+
+    if title is not None:
+        plt.title(title)
+
+    plt.xticks(
+        sorted(set(co2_levels.values()))
+    )
+
+    if ecs is not None:
+        plt.legend(
+            title=f"Global mean\nECS = {ecs:.2f} °C"
+        )
+    else:
+        plt.legend(
+            title="Global mean"
+        )
+
+    plt.grid(
+        True,
+        linestyle="--",
+        alpha=0.4
+    )
+
+    plt.tight_layout()
+
+    if save is not None:
+        plt.savefig(
+            save,
+            bbox_inches="tight"
+        )
+
+    plt.show()
