@@ -320,6 +320,33 @@ def calculate_ecs(global_means, co2_levels):
 
     return slope
 
+def polar_mean(da, lat_threshold=60):
+    """
+    Area-weighted mean over both polar regions.
+
+    Parameters
+    ----------
+    da : xarray.DataArray
+        DataArray with lat/lon dimensions.
+
+    lat_threshold : float
+        Minimum absolute latitude defining the polar region.
+
+    Returns
+    -------
+    xarray.DataArray
+        Area-weighted polar mean.
+    """
+
+    polar = da.where(
+        np.abs(da.lat) >= lat_threshold,
+        drop=True
+    )
+
+    weights = np.cos(np.deg2rad(polar.lat))
+
+    return polar.weighted(weights).mean(("lat", "lon"))
+
 
 ### -------------------------- ###
 ###     Plotting functions     ###
@@ -750,6 +777,7 @@ def plot_global_mean_vs_co2(
     values,
     co2_levels,
     ecs=None,
+    polar_amp=None,
     ylabel="Global mean temperature (°C)",
     xlabel="CO₂ (× pre-industrial)",
     title=None,
@@ -784,6 +812,13 @@ def plot_global_mean_vs_co2(
             "x3": 3,
             "x6": 6
         }
+    
+    ecs : float, optional
+        Equilibrium climate sensitivity.
+
+    polar_amp : dict, optional
+        Dictionary containing the polar amplification factor for each
+        non-reference experiment.
 
     ylabel : str
         Y-axis label.
@@ -845,25 +880,265 @@ def plot_global_mean_vs_co2(
         sorted(set(co2_levels.values()))
     )
 
+    # -----------------------------
+    # Legend
+    # -----------------------------
+
+    handles, labels = plt.gca().get_legend_handles_labels()
+
+    # Add ECS as a text-only legend entry
     if ecs is not None:
-        plt.legend(
-            title=f"Global mean\nECS = {ecs:.2f} °C"
+        handles.append(
+            plt.Line2D(
+                [],
+                [], 
+                linestyle="none",
+                marker="",
+                label=f"ECS = {ecs:.2f} °C"
+            )
         )
-    else:
-        plt.legend(
-            title="Global mean"
+
+    # Add polar amplification values
+    if polar_amp is not None:
+
+        handles.append(
+            plt.Line2D(
+                [],
+                [],
+                linestyle="none",
+                marker="",
+                label="Polar amplification"
+            )
         )
+
+        for exp, value in polar_amp.items():
+            handles.append(
+                plt.Line2D(
+                    [],
+                    [],
+                    linestyle="none",
+                    marker="",
+                    label=f"{exp} = {value:.2f}"
+                )
+            )
+
+    plt.legend(
+        handles=handles,
+        title="Global mean",
+    )
+
+def plot_global_timeseries(
+    series,
+    ylabel,
+    title,
+    use_model_years=False,
+    xlabel="Simulation year",
+    figsize=(10, 5),
+    dpi=150,
+    save=None,
+):
+    """
+    Plot global mean time series for one or more experiments.
+
+    Parameters
+    ----------
+    series : dict
+        Dictionary of xarray.DataArray objects with dimension
+        (time_counter,).
+
+    ylabel : str
+        Label for the y-axis.
+
+    title : str
+        Figure title.
+
+    xlabel : str, optional
+        Label for the x-axis.
+
+    save : str or Path, optional
+        Output filename.
+    """
+
+    plt.figure(figsize=figsize, dpi=dpi)
+
+    for exp, da in series.items():
+
+        if use_model_years:
+            years = da.time_counter.dt.year
+        else:
+            years = np.arange(1, len(da) + 1)
+
+        plt.plot(
+            years,
+            da.values,
+            linewidth=2,
+            label=exp
+        )
+
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
 
     plt.grid(
         True,
         linestyle="--",
         alpha=0.4
     )
+    
+    plt.legend()
 
     plt.tight_layout()
 
     if save is not None:
         plt.savefig(
+            save,
+            bbox_inches="tight"
+        )
+
+    plt.show()
+
+def plot_gregory(
+    tas_series,
+    toa_series,
+    colors=None,
+    xlabel="Global mean TAS (°C)",
+    ylabel="TOA net radiation (W m⁻²)",
+    title="Gregory plots",
+    figsize=(7, 6),
+    dpi=150,
+    save=None,
+):
+
+    fig, ax = plt.subplots(
+        figsize=figsize,
+        dpi=dpi
+    )
+
+    # Automatic colors
+    if colors is None:
+        color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+
+        colors = {
+            exp: color_cycle[i % len(color_cycle)]
+            for i, exp in enumerate(tas_series)
+        }
+
+    for k in tas_series:
+
+        tas = tas_series[k]
+        toa = toa_series[k]
+
+        # Convert directly to numpy arrays
+        x = tas.values
+        y = toa.values
+
+        # Check lengths
+        if len(x) != len(y):
+            raise ValueError(
+                f"{k}: TAS has {len(x)} points, "
+                f"TOA has {len(y)} points"
+            )
+
+        # Remove NaNs
+        valid = np.isfinite(x) & np.isfinite(y)
+
+        x = x[valid]
+        y = y[valid]
+
+        print(
+            f"{k}: {len(x)} valid points"
+        )
+
+        if len(x) < 2:
+            raise ValueError(
+                f"{k}: not enough valid data points "
+                f"for regression."
+            )
+
+        # Regression
+        slope, intercept = np.polyfit(x, y, 1)
+
+        x_fit = np.linspace(
+            x.min(),
+            x.max(),
+            100
+        )
+
+        y_fit = slope * x_fit + intercept
+
+        color = colors[k]
+
+        # Evolution
+        ax.plot(
+            x,
+            y,
+            color=color,
+            alpha=0.6,
+            linewidth=1
+        )
+
+        # Scatter
+        ax.scatter(
+            x,
+            y,
+            color=color,
+            s=25,
+            label=k
+        )
+
+        # First year
+        ax.scatter(
+            x[0],
+            y[0],
+            color=color,
+            s=100,
+            marker="o",
+            edgecolor="k",
+            zorder=3
+        )
+
+        # Last year
+        ax.scatter(
+            x[-1],
+            y[-1],
+            color=color,
+            s=100,
+            marker="s",
+            edgecolor="k",
+            zorder=3
+        )
+
+        # Regression
+        ax.plot(
+            x_fit,
+            y_fit,
+            color=color,
+            linestyle="--"
+        )
+
+    ax.axhline(
+        0,
+        color="k",
+        linestyle=":",
+        linewidth=1
+    )
+
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
+
+    ax.grid(
+        True,
+        linestyle="--",
+        alpha=0.4
+    )
+
+    ax.legend(title="Experiment")
+
+    fig.tight_layout()
+
+    if save is not None:
+        fig.savefig(
             save,
             bbox_inches="tight"
         )
