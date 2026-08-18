@@ -1545,3 +1545,156 @@ def plot_global_mean_vs_logco2(
     plt.show()
 
     return slope, intercept
+
+def plot_sst_gradient_vs_global_mean(
+    global_mean_sst,
+    meridional_gradient,
+    reference=None,
+    xlabel="Global mean SST (°C)",
+    ylabel="Tropics – High latitude SST (°C)",
+    title="Meridional SST gradient vs global mean SST",
+    figsize=(6, 4),
+    dpi=150,
+    ylim=None,
+    xlim=None,
+    annotate=True,
+    save=None,
+):
+    """
+    Plot meridional SST gradient against global mean SST
+    for multiple experiments.
+
+    The reference experiment is included in the plot and is
+    identified by `reference`. All other experiments available
+    in the input dictionaries are plotted automatically.
+
+    Parameters
+    ----------
+    global_mean_sst : dict
+        Dictionary containing one scalar global mean SST value
+        per experiment.
+
+    meridional_gradient : dict
+        Dictionary containing one scalar meridional SST gradient
+        per experiment.
+
+    reference : str, optional
+        Name of the reference experiment. Default is "pi".
+
+    xlabel : str, optional
+        Label for the x-axis.
+
+    ylabel : str, optional
+        Label for the y-axis.
+
+    title : str, optional
+        Figure title.
+
+    figsize : tuple, optional
+        Figure size.
+
+    dpi : int, optional
+        Figure resolution.
+
+    ylim : tuple, optional
+        Y-axis limits.
+
+    xlim : tuple, optional
+        X-axis limits.
+
+    annotate : bool, optional
+        Whether to write experiment names next to points.
+
+    save : str or Path, optional
+        Output filename.
+    """
+
+    # Find experiments available in both dictionaries
+    experiments = [
+        exp
+        for exp in global_mean_sst
+        if exp in meridional_gradient
+    ]
+
+    if not experiments:
+        raise ValueError(
+            "No common experiments found between "
+            "global_mean_sst and meridional_gradient."
+        )
+
+    # Create figure
+    plt.figure(
+        figsize=figsize,
+        dpi=dpi
+    )
+
+    # Plot each experiment
+    for exp in experiments:
+
+        x = float(global_mean_sst[exp])
+        y = float(meridional_gradient[exp])
+
+        # Reference experiment gets a different marker
+        if exp == reference:
+            plt.scatter(
+                x,
+                y,
+                s=90,
+                marker="o",
+                color="black",
+                edgecolor="black",
+                zorder=3,
+                label=exp
+            )
+        else:
+            plt.scatter(
+                x,
+                y,
+                s=80,
+                zorder=3,
+                label=exp
+            )
+
+        # Experiment name
+        if annotate:
+            plt.text(
+                x,
+                y + 0.15,
+                exp,
+                ha="center",
+                fontsize=9
+            )
+
+    # Axis limits
+    if xlim is not None:
+        plt.xlim(*xlim)
+
+    if ylim is not None:
+        plt.ylim(*ylim)
+
+    # Labels
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+
+    # Legend
+    plt.legend(
+        title="Experiment"
+    )
+
+    # Grid
+    plt.grid(
+        True,
+        linestyle="--",
+        alpha=0.4
+    )
+    plt.tight_layout()
+
+    # Save
+    if save is not None:
+        plt.savefig(
+            save,
+            bbox_inches="tight"
+        )
+
+    plt.show()
