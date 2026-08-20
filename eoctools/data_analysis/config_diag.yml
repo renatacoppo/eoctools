@@ -1,0 +1,45 @@
+# Paths
+base_path: "/Users/renatacoppo/epochal/data-analysis/epochal"
+
+# Number of years to load from each simulation
+nyears: 100
+
+# Reference experiment
+reference: "pi"
+
+# Plot directory
+plot_directory: "plots"
+
+# Experiments
+experiments:
+
+  pi:
+    directory: "exp3"
+    co2: 1
+
+    atm: "processed/atm_annual_mean_1850-3349.nc"
+    oce: "processed/oce_annual_mean_1850-3349.nc"
+    moc: "processed/moc_annual_mean_1850-3349.nc"
+
+  x3:
+    directory: "pex3"
+    co2: 3
+    
+    atm: "processed/atm_annual_mean_1700-1806.nc"
+    oce: "processed/oce_annual_mean_1700-1806.nc"
+    moc: "processed/moc_annual_mean_1700-1806.nc"
+
+  # Optional experiments
+  # x4:
+  #   directory: "XE4C"
+  #   co2: 4
+  #   atm: "processed/atm_annual_mean_....nc"
+  #   oce: "processed/oce_annual_mean_....nc"
+  #   moc: "processed/moc_annual_mean_....nc"
+
+  # x6:
+  #   directory: "XE6C"
+  #   co2: 6
+  #   atm: "processed/atm_annual_mean_....nc"
+  #   oce: "processed/oce_annual_mean_....nc"
+  #   moc: "processed/moc_annual_mean_....nc"

@@ -933,6 +933,18 @@ def plot_global_mean_vs_co2(
         title="Global mean",
     )
 
+    plt.tight_layout()
+
+    if save is not None:
+        plt.savefig(
+            save,
+            dpi=dpi,
+            bbox_inches="tight"
+        )
+
+    plt.show()
+    plt.close()
+
 def plot_global_timeseries(
     series,
     ylabel,
@@ -1151,190 +1163,9 @@ def plot_gregory(
 
     plt.show()
 
-def plot_global_mean_vs_log2co2_old(
-    values,
-    co2_levels,
-    ylabel="Global mean precipitation (mm/day)",
-    xlabel=r"log$_2$(CO$_2$)",
-    title=None,
-    ylim=None,
-    xlim=None,
-    figsize=(6, 4),
-    dpi=300,
-    save=None,
-):
-    """
-    Plot global mean value against log2(CO2) with a linear regression.
-
-    Parameters
-    ----------
-    values : dict
-        Dictionary with experiment names as keys and scalar values
-        (or scalar xarray.DataArrays) as values.
-
-    co2_levels : dict
-        Dictionary mapping experiments to CO2 multipliers relative
-        to pre-industrial CO2.
-
-    ylabel : str
-        Label for the y-axis.
-
-    xlabel : str
-        Label for the x-axis.
-
-    title : str, optional
-        Figure title.
-
-    ylim : tuple, optional
-        Y-axis limits.
-
-    xlim : tuple, optional
-        X-axis limits.
-
-    save : str or Path, optional
-        Output filename.
-    """
-
-    plt.figure(
-        figsize=figsize,
-        dpi=dpi
-    )
-
-    # -------------------------
-    # Prepare data
-    # -------------------------
-
-    experiments = []
-    x = []
-    y = []
-
-    for exp, value in values.items():
-
-        if exp not in co2_levels:
-            continue
-
-        experiments.append(exp)
-
-        x.append(np.log2(co2_levels[exp]))
-        y.append(float(value))
-
-    x = np.array(x)
-    y = np.array(y)
-
-    # -------------------------
-    # Scatter points
-    # -------------------------
-
-    for exp, xi, yi in zip(experiments, x, y):
-
-        plt.scatter(
-            xi,
-            yi,
-            s=80,
-            label=f"{exp}: {yi:.2f}"
-        )
-
-        plt.text(
-            xi,
-            yi + 0.15,
-            exp,
-            ha="center"
-        )
-
-    # -------------------------
-    # Linear regression
-    # -------------------------
-
-    valid = np.isfinite(x) & np.isfinite(y)
-
-    if valid.sum() >= 2:
-
-        slope, intercept = np.polyfit(
-            x[valid],
-            y[valid],
-            1
-        )
-
-        x_fit = np.linspace(
-            x[valid].min(),
-            x[valid].max(),
-            100
-        )
-
-        y_fit = (
-            slope * x_fit
-            + intercept
-        )
-
-        plt.plot(
-            x_fit,
-            y_fit,
-            color="black",
-            linestyle="--",
-            linewidth=1.5,
-            label=(
-                f"Slope: {slope:.3f}\n"
-                f"Intercept = {intercept:.3f}\n"
-        ))
-
-    # -------------------------
-    # Axes
-    # -------------------------
-
-    if xlim is not None:
-        plt.xlim(*xlim)
-
-    if ylim is not None:
-        plt.ylim(*ylim)
-
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-
-    if title is not None:
-        plt.title(title)
-
-    # Regular log2(CO2) ticks
-    if xlim is not None:
-        tick_min = int(np.ceil(xlim[0]))
-        tick_max = int(np.floor(xlim[1]))
-    else:
-        tick_min = int(np.floor(x.min()))
-        tick_max = int(np.ceil(x.max()))
-
-    ticks = np.arange(
-        tick_min,
-        tick_max + 1
-    )
-
-    plt.xticks(ticks)
-
-    # -------------------------
-    # Legend and grid
-    # -------------------------
-
-    plt.legend(
-        title="Global mean"
-    )
-
-    plt.grid(
-        True,
-        linestyle="--",
-        alpha=0.4
-    )
-
-    plt.tight_layout()
-
-    if save is not None:
-        plt.savefig(
-            save,
-            bbox_inches="tight"
-        )
-
-    plt.show()
-
 def plot_global_mean_vs_logco2(
     values,
-    co2_levels,
+    logco2_levels,
     ylabel="Global mean precipitation (mm/day)",
     xlabel="log₂(CO₂)",
     title=None,
@@ -1380,24 +1211,30 @@ def plot_global_mean_vs_logco2(
     # Prepare data
     # --------------------------------------------------
 
+    
+    plt.figure(figsize=figsize, dpi=dpi)
+
     experiments = []
-    co2 = []
+    x = []
     y = []
 
     for exp, value in values.items():
 
-        if exp not in co2_levels:
+        if exp not in logco2_levels:
+            continue
+
+        xi = float(logco2_levels[exp])
+        yi = float(value)
+
+        if not np.isfinite(xi) or not np.isfinite(yi):
             continue
 
         experiments.append(exp)
-        co2.append(co2_levels[exp])
-        y.append(float(value))
+        x.append(xi)
+        y.append(yi)
 
-    co2 = np.asarray(co2)
+    x = np.asarray(x)
     y = np.asarray(y)
-
-    # log2(CO2)
-    x = np.log2(co2)
 
     # Remove invalid values
     valid = np.isfinite(x) & np.isfinite(y)
@@ -1486,9 +1323,7 @@ def plot_global_mean_vs_logco2(
     # X ticks at regular log2(CO2) intervals
     # --------------------------------------------------
 
-    max_co2 = max(co2_levels.values())
-
-    max_logco2 = int(np.ceil(np.log2(max_co2)))
+    max_logco2 = int(np.ceil(max(logco2_levels.values())))
 
     xticks = np.arange(
         0,
