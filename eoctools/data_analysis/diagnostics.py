@@ -6,6 +6,7 @@ from pr import PRDiagnostics
 from toa import TOADiagnostics
 from sst import SSTDiagnostics
 from sos import SOSDiagnostics
+from deepmip import DeepMIPDiagnostics
 from utils import load_last_years
 
 
@@ -21,7 +22,9 @@ class Diagnostics():
             self.nyears = config["nyears"]
             self.reference = config["reference"]
             self.experiments = config["experiments"]
+            self.deepmip = config["deepmip"]
             self.plot_directory = config["plot_directory"]
+            self.comparison_plot_dir = (self.base_path / config["comparison_plot_directory"])
 
             #Data containers      
             self.atm = {}
@@ -51,6 +54,7 @@ class Diagnostics():
                  tas=self.tas,
                  reference=self.reference,
                  plot_dirs=self.plot_dirs,
+                 comparison_plot_dir=self.comparison_plot_dir
             )
 
             self.tos = SSTDiagnostics(
@@ -65,6 +69,14 @@ class Diagnostics():
                  reference=self.reference,
                  plot_dirs=self.plot_dirs,
             )
+            
+            self.deepmip = DeepMIPDiagnostics(
+                 base_path=self.base_path,
+                 reference=self.reference,
+                 deepmip_models=config["deepmip"],
+                 plot_dir=self.base_path / self.comparison_plot_dir,
+                 experiment_dirs=self.experiment_dirs
+            )
 
             #self.tos = {}
             #self.sos = {}
@@ -78,15 +90,19 @@ class Diagnostics():
         def _load_data(self):
              for exp, info in self.experiments.items():
                   directory = self.base_path / info["directory"]
+
+                  #Optional explicit end year
+                  end_year = info.get("end_year", None)
+
                 # Atmosphere
                   if "atm" in info:
-                       self.atm[exp] = load_last_years(directory / info["atm"], nyears=self.nyears)
+                       self.atm[exp] = load_last_years(directory / info["atm"], nyears=self.nyears, end_year=end_year)
                 # Ocean
                   if "oce" in info:
-                       self.oce[exp] = load_last_years(directory / info["oce"], nyears=self.nyears)
+                       self.oce[exp] = load_last_years(directory / info["oce"], nyears=self.nyears, end_year=end_year)
                 # MOC
                   if "moc" in info:
-                       self.moc[exp] = load_last_years(directory / info["moc"], nyears=self.nyears)
+                       self.moc[exp] = load_last_years(directory / info["moc"], nyears=self.nyears, end_year=end_year)
 
         # General properties
         @property
@@ -107,6 +123,13 @@ class Diagnostics():
         def experiment_names(self):
 
             return list(self.experiments.keys())
+        
+        @property
+        def experiment_dirs(self):
+             return [
+               info["directory"]
+               for info in self.experiments.values()
+          ]
 
         @property
         def perturbation_experiments(self):

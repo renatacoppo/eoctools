@@ -6,82 +6,28 @@ import cartopy.crs as ccrs
 from cartopy.util import add_cyclic_point
 
 # open datasets
-def load_last_years(file_path, nyears=100, time_dim="time_counter"):
-
+def load_last_years(
+    file_path,
+    nyears=100,
+    time_dim="time_counter",
+    end_year=None,
+):
     ds = xr.open_dataset(file_path)
 
-    last_year = ds[time_dim].dt.year.max().item()
-    first_year = last_year - nyears + 1
+    # Determine final year
+    if end_year is None:
+        end_year = ds[time_dim].dt.year.max().item()
+
+    first_year = end_year - nyears + 1
 
     ds = ds.sel(
-        {time_dim: slice(
-            f"{first_year}-01-01",
-            f"{last_year}-12-31"
-        )}
+        {
+            time_dim: slice(
+                f"{first_year}-01-01",
+                f"{end_year}-12-31",
+            )
+        }
     )
-
-    return ds
-
-def load_last_years_old(base_path, pattern, nyears=None, which="last", time_dim="time_counter"):
-
-    full_pattern = base_path / pattern
-    files = sorted(full_pattern.parent.glob(full_pattern.name))
-
-    # Extract start year from filenames
-    years = [int(f.stem.split("_")[-1].split("-")[0]) for f in files]
-
-    first_year = min(years)
-    last_year = max(years)
-
-    # --- check if last year is complete ---
-    last_file = files[years.index(last_year)]
-    ds_last = xr.open_dataset(last_file)
-
-    if ds_last[time_dim].size < 12:
-        print(f"Dropping incomplete year {last_year}")
-        last_year -= 1
-
-    if nyears is None:
-        # load all years
-    #    selected_files = [f for f, y in zip(files, years) if y <= last_year]
-    #    start_year = min(years)
-    #else:
-    #    start_year = last_year - nyears + 1
-    #    selected_files = [
-    #        f for f, y in zip(files, years)
-    #        if first_year <= y <= last_year
-    #    ]
-        start_year = first_year
-        end_year = last_year
-
-    else:
-        if which == "last":
-            start_year = last_year - nyears + 1               
-            end_year = last_year
-
-        elif which == "first":
-            start_year = first_year
-            end_year = first_year + nyears - 1
-
-        else:
-            raise ValueError("which must be 'first' or 'last'")
-
-        selected_files = [
-            f for f, y in zip(files, years)
-            if start_year <= y <= end_year
-        ]
-
-    print(f"{pattern}: {start_year}-{end_year} ({len(selected_files)} files)")
-
-
-    ds = xr.open_mfdataset(
-        selected_files,
-        combine="by_coords",
-        parallel=True,
-        chunks={time_dim: 120}
-    )
-
-    ds = ds.sortby(time_dim)
 
     return ds
 
@@ -707,6 +653,60 @@ def plot_zonal_time(
     title,
     cmap,
     colorbar_label,
+    levels,
+    save,
+    figsize=(8, 5),
+    dpi=150
+):
+
+    fig, ax = plt.subplots(
+        figsize=figsize,
+        dpi=dpi
+    )
+
+    # Convert cftime dates to integer years
+    years = field.time_counter.dt.year.values
+    lat = field.lat.values
+    temperature = field.T.values
+
+    cf = ax.contourf(
+        years,
+        lat,
+        temperature,
+        levels=levels,
+        cmap=cmap,
+        extend="both"
+    )
+
+    cbar = fig.colorbar(
+        cf,
+        ax=ax,
+        orientation="vertical"
+    )
+
+    cbar.set_label(colorbar_label)
+
+    ax.set_xlabel("Year")
+    ax.set_ylabel("Latitude")
+    ax.set_title(title)
+
+    fig.tight_layout()
+
+    if save is not None:
+        fig.savefig(
+            save,
+            bbox_inches="tight"
+        )
+
+    plt.show()
+    plt.close(fig)
+
+def plot_zonal_time_old(
+    field,
+    experiment,
+    title,
+    cmap,
+    colorbar_label,
     levels=20,
     save=None,
     figsize=(10, 5),
@@ -944,6 +944,144 @@ def plot_global_mean_vs_co2(
 
     plt.show()
     plt.close()
+
+def plot_global_mean_vs_co2_dp(
+    data,
+    title,
+    save,
+    model_styles,
+    figsize=(8, 5),
+    dpi=150,
+):
+    """
+    Plot global mean surface temperature against CO2 concentration.
+
+    Parameters
+    ----------
+    data : list of dict
+        Plotting data. Each dictionary must contain:
+        "model", "CO2", "T", and "pi".
+
+    title : str
+        Figure title.
+
+    save : Path
+        Output filename.
+
+    model_styles : dict
+        Dictionary defining color and marker for each model.
+
+    figsize : tuple
+        Figure size.
+
+    dpi : int
+        Figure resolution.
+    """
+
+    fig, ax = plt.subplots(
+        figsize=figsize,
+        dpi=dpi,
+    )
+
+    models = sorted(
+        set(d["model"] for d in data)
+    )
+
+    for model in models:
+
+        style = model_styles[model]
+
+        model_data = [
+            d for d in data
+            if d["model"] == model
+        ]
+
+        # Sort by CO2
+        model_data = sorted(
+            model_data,
+            key=lambda d: d["CO2"],
+        )
+
+        xs = np.array([
+            d["CO2"]
+            for d in model_data
+        ])
+
+        ys = np.array([
+            d["T"]
+            for d in model_data
+        ])
+
+        # Connecting line
+        ax.plot(
+            xs,
+            ys,
+            color=style["color"],
+            linewidth=1.5,
+            zorder=2,
+        )
+
+        # Points
+        for d in model_data:
+
+            size = 40 if d["pi"] else 120
+
+            ax.scatter(
+                d["CO2"],
+                d["T"],
+                color=style["color"],
+                marker=style["marker"],
+                s=size,
+                edgecolor="k",
+                zorder=3,
+            )
+
+    # Labels
+    ax.set_xlabel(
+        "CO₂ concentration (× pre-industrial)"
+    )
+
+    ax.set_ylabel(
+        "Global mean surface temperature (°C)"
+    )
+
+    ax.set_title(title)
+
+    ax.grid(
+        True,
+        alpha=0.4,
+        linestyle="--",
+    )
+
+    # Legend
+    for model in models:
+
+        style = model_styles[model]
+
+        ax.scatter(
+            [],
+            [],
+            color=style["color"],
+            marker=style["marker"],
+            label=model,
+        )
+
+    ax.legend(
+        title="Model",
+        bbox_to_anchor=(1.05, 1),
+        loc="upper left",
+    )
+
+    fig.tight_layout()
+
+    if save is not None:
+        fig.savefig(
+            save,
+            bbox_inches="tight",
+        )
+
+    plt.show()
+    plt.close(fig)
 
 def plot_global_timeseries(
     series,
@@ -1533,3 +1671,162 @@ def plot_sst_gradient_vs_global_mean(
         )
 
     plt.show()
+
+
+def plot_sst_gradient_vs_global_sst_dpn(
+    data,
+    title,
+    save,
+    model_styles,
+    figsize=(8, 5),
+    dpi=150,
+):
+    """
+    Plot meridional SST gradient against global mean SST. For comparison with DeepMIP results.
+    """
+
+    fig, ax = plt.subplots(
+        figsize=figsize,
+        dpi=dpi,
+    )
+
+    models = sorted(
+        set(d["model"] for d in data)
+    )
+
+    # --------------------------------------------------
+    # Scatter points
+    # --------------------------------------------------
+
+    for d in data:
+
+        style = model_styles[d["model"]]
+
+        size = 50 if d["pi"] else 130
+
+        ax.scatter(
+            float(d["x"]),
+            float(d["y"]),
+            color=style["color"],
+            marker=style["marker"],
+            s=size,
+            edgecolor="k",
+            zorder=3,
+        )
+
+        ax.text(
+            float(d["x"]) + 0.1,
+            float(d["y"]) + 0.1,
+            d["exp"],
+            fontsize=8,
+            zorder=4,
+        )
+
+    # --------------------------------------------------
+    # Connecting lines
+    # --------------------------------------------------
+
+    for model in models:
+
+        style = model_styles[model]
+
+        model_data = [
+            d for d in data
+            if d["model"] == model
+        ]
+
+        model_data = sorted(
+            model_data,
+            key=lambda d: d["x"],
+        )
+
+        xs = np.array([
+            float(d["x"])
+            for d in model_data
+        ])
+
+        ys = np.array([
+            float(d["y"])
+            for d in model_data
+        ])
+
+        ax.plot(
+            xs,
+            ys,
+            color=style["color"],
+            linewidth=1.5,
+            zorder=2,
+        )
+
+    # --------------------------------------------------
+    # Labels
+    # --------------------------------------------------
+
+    ax.set_xlabel(
+        "Global mean SST (°C)"
+    )
+
+    ax.set_ylabel(
+        "Tropics – High latitude SST (°C)"
+    )
+
+    ax.set_title(title)
+
+    ax.grid(
+        True,
+        linestyle="--",
+        alpha=0.4,
+    )
+
+    # --------------------------------------------------
+    # Legend
+    # --------------------------------------------------
+
+    handles = []
+
+    for model in models:
+
+        style = model_styles[model]
+
+        handles.append(
+            plt.Line2D(
+                [],
+                [],
+                color=style["color"],
+                marker=style["marker"],
+                linestyle="None",
+                label=model,
+            )
+        )
+
+    ax.legend(
+        handles=handles,
+        title="Model",
+        bbox_to_anchor=(1.05, 1),
+        loc="upper left",
+    )
+
+    fig.tight_layout()
+
+    if save is not None:
+        fig.savefig(
+            save,
+            bbox_inches="tight",
+        )
+
+    plt.show()
+    plt.close(fig)
+
+
+
+DEEP_MIP_MODEL_STYLES = {
+    "IPSL":      {"color": "lightblue", "marker": "D"},
+    "GFDL":      {"color": "orange",    "marker": "o"},
+    "CESM":      {"color": "blue",      "marker": "s"},
+    "INM":       {"color": "purple",    "marker": "*"},
+    "COSMOS":    {"color": "brown",     "marker": "^"},
+    "HadCM":     {"color": "yellow",    "marker": "v"},
+    "MIROC":     {"color": "red",       "marker": "^"},
+    "NorESM":    {"color": "pink",      "marker": "v"},
+    "EC-EARTH4": {"color": "green",     "marker": "X"},
+}

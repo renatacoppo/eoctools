@@ -115,9 +115,9 @@ class TASDiagnostics:
         }
 
         #Equilibrium Climate Sensitivity
-        self.ECS = calculate_ecs(
-            self.global_mean, self.co2_levels
-        )
+        #self.ECS = calculate_ecs(
+        #    self.global_mean, self.co2_levels
+        #)
 
     def _plot(self, plot_experiment=None):
 
@@ -202,11 +202,11 @@ class TASDiagnostics:
         plot_global_mean_vs_co2(
             values=self.global_mean,
             co2_levels=self.co2_levels,
-            ecs=self.ECS,
+            #ecs=self.ECS,
             polar_amp=self.polar_amp,
             ylabel="Global mean TAS (°C)",
             title = "Global mean TAS (°C) vs CO2 concentration",
-            ylim=(10.5, 36),
+            ylim=(10.5, 40),
             xlim=(0, 7),
             save=plot_dir / "global_mean_tas.png"
         )

@@ -213,7 +213,7 @@ class SSTDiagnostics:
             co2_levels=self.co2_levels,
             ylabel="Global mean SST (°C)",
             title = "Global mean SST (°C) vs CO2 concentration",
-            ylim=(10.5, 36),
+            ylim=(10.5, 40),
             xlim=(0, 7),
             save=plot_dir / "global_mean_sst.png"
         )

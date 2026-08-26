@@ -191,7 +191,7 @@ class PRDiagnostics:
             ylabel="Global mean precipitation (mm/day)",
             xlabel="log₂(CO₂)",
             title="Global mean precipitation vs CO₂",
-            ylim=(2.5, 4.4),
+            ylim=(2.5, 5),
             xlim=(-0.1, 3),
             save=plot_dir / "global_mean_pr_logco2.png"
         )

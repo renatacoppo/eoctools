@@ -3,14 +3,15 @@ import numpy as np
 from utils import plot_gregory, global_toa_ts
 
 class TOADiagnostics:
-    def __init__(self, atm, tas, reference, plot_dirs):
+    def __init__(self, atm, tas, reference, plot_dirs, comparison_plot_dir):
 
         self.atm = atm
         self.tas= tas
         self.reference = reference
         self.plot_dirs = plot_dirs
+        self.comparison_plot_dir = comparison_plot_dir
 
-        self.tos = {}
+        self.toa = {}
 
     def run(self, plot=True, plot_experiment=None):
 
@@ -44,18 +45,33 @@ class TOADiagnostics:
             )
 
         # Directory for this experiment's TAS plots
-        plot_dir = self.plot_dirs[exp] / "toa"
+        plot_dir = self.comparison_plot_dir / "toa"
 
         plot_dir.mkdir(
             parents=True,
             exist_ok=True
         )
 
+        # --------------------------------------------------
+        # Create filename from experiment directories
+        # --------------------------------------------------
+
+        experiment_dirs = [
+            self.plot_dirs[exp].parent.name
+            for exp in self.atm.keys()
+        ]
+
+        experiment_string = "_".join(experiment_dirs)
+
+        save = (
+            plot_dir
+            / f"gregory_all_experiments_{experiment_string}.png"
+        )
 
         # Gregory plot for all experiments (the years plotted depend on the years loaded on atm)
         plot_gregory(
             tas_series=self.tas.tas_ts,
             toa_series=self.toa,
             title="Gregory plots – All experiments",
-            save=plot_dir / "gregory_all_experiments.png"
+            save=save
         )
