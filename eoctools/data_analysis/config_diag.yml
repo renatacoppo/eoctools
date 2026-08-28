@@ -18,34 +18,45 @@ experiments:
     directory: "pix1"
     co2: 1
 
-    atm: "processed/atm_annual_mean_1600-1650.nc"
-    oce: "processed/oce_annual_mean_1600-1650.nc"
-    moc: "processed/moc_annual_mean_1600-1650.nc"
+    atm: "processed/atm_annual_mean_1600-1799.nc"
+    oce: "processed/oce_annual_mean_1600-1799.nc"
+    moc: "processed/moc_annual_mean_1600-1799.nc"
 
   x1:
     directory: "pex1"
     co2: 1
     
-    atm: "processed/atm_annual_mean_1600-1650.nc"
-    oce: "processed/oce_annual_mean_1600-1650.nc"
-    moc: "processed/moc_annual_mean_1600-1650.nc"
+    atm: "processed/atm_annual_mean_1600-1799.nc"
+    oce: "processed/oce_annual_mean_1600-1799.nc"
+    moc: "processed/moc_annual_mean_1600-1799.nc"
 
   # Optional experiments
   x3:
-    directory: "pex3"
+    directory: "nex3"
     co2: 3
-    atm: "processed/atm_annual_mean_1700-1806.nc"
-    oce: "processed/oce_annual_mean_1700-1806.nc"
-    moc: "processed/moc_annual_mean_1700-1806.nc"
+
+    #end_year: 1805 #Last complete year
+    atm: "processed/atm_annual_mean_1600-2099.nc"
+    oce: "processed/oce_annual_mean_1600-2099.nc"
+    moc: "processed/moc_annual_mean_1600-2099.nc"
 
   x1.1:
     directory: "oix1"
     co2: 1
    #end_year: 1701 #Last complete year
 
-    atm: "processed/atm_annual_mean_1600-1649.nc"
-    oce: "processed/oce_annual_mean_1600-1649.nc"
-    moc: "processed/moc_annual_mean_1600-1649.nc"
+    atm: "processed/atm_annual_mean_1600-1799.nc"
+    oce: "processed/oce_annual_mean_1600-1799.nc"
+    moc: "processed/moc_annual_mean_1600-1799.nc"
+
+  x6:
+    directory: "pex6"
+    co2: 6
+    end_year: 1701 #Last complete year
+
+    atm: "processed/atm_annual_mean_1600-1702.nc"
+    oce: "processed/oce_annual_mean_1600-1702.nc"
+    moc: "processed/moc_annual_mean_1600-1702.nc"
 
 
 deepmip:

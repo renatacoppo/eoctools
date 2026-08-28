@@ -1,4 +1,5 @@
 import numpy as np
+import xarray as xr
 import yaml
 from pathlib import Path
 from tas import TASDiagnostics
@@ -7,7 +8,7 @@ from toa import TOADiagnostics
 from sst import SSTDiagnostics
 from sos import SOSDiagnostics
 from deepmip import DeepMIPDiagnostics
-from utils import load_last_years
+from utils import load_last_years, load_simulation
 
 
 class Diagnostics():
@@ -22,12 +23,13 @@ class Diagnostics():
             self.nyears = config["nyears"]
             self.reference = config["reference"]
             self.experiments = config["experiments"]
-            self.deepmip = config["deepmip"]
+            self.deepmip_config = config["deepmip"]
             self.plot_directory = config["plot_directory"]
             self.comparison_plot_dir = (self.base_path / config["comparison_plot_directory"])
 
             #Data containers      
             self.atm = {}
+            self.atm_full = {}
             self.oce = {}
             self.moc = {}
 
@@ -50,8 +52,7 @@ class Diagnostics():
             )
 
             self.toa = TOADiagnostics(
-                 atm=self.atm,
-                 tas=self.tas,
+                 atm=self.atm_full,
                  reference=self.reference,
                  plot_dirs=self.plot_dirs,
                  comparison_plot_dir=self.comparison_plot_dir
@@ -73,7 +74,7 @@ class Diagnostics():
             self.deepmip = DeepMIPDiagnostics(
                  base_path=self.base_path,
                  reference=self.reference,
-                 deepmip_models=config["deepmip"],
+                 deepmip_models=self.deepmip_config,
                  plot_dir=self.base_path / self.comparison_plot_dir,
                  experiment_dirs=self.experiment_dirs
             )
@@ -96,7 +97,18 @@ class Diagnostics():
 
                 # Atmosphere
                   if "atm" in info:
+                       
+                       file_path=directory / info["atm"]
+                       #Last N years: used by the normal diagnostics
                        self.atm[exp] = load_last_years(directory / info["atm"], nyears=self.nyears, end_year=end_year)
+                       
+                       #Complete simulation: can be used by TOA/Gregory
+                       self.atm_full[exp] = load_simulation(
+                            file_path,
+                            skip_years=10,
+                            end_year=end_year
+                       )
+                
                 # Ocean
                   if "oce" in info:
                        self.oce[exp] = load_last_years(directory / info["oce"], nyears=self.nyears, end_year=end_year)

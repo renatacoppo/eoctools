@@ -31,6 +31,40 @@ def load_last_years(
 
     return ds
 
+def load_simulation(
+    file_path,
+    skip_years=10,
+    time_dim="time_counter",
+    end_year=None,
+):
+    """
+    Load all years except the first `skip_years`,
+    optionally stopping at `end_year`.
+    """
+
+    ds = xr.open_dataset(file_path)
+
+    years = ds[time_dim].dt.year
+
+    first_available_year = years.min().item()
+    last_available_year = years.max().item()
+
+    if end_year is None:
+        end_year = last_available_year
+
+    first_year = first_available_year + skip_years
+
+    ds = ds.sel(
+        {
+            time_dim: slice(
+                f"{first_year}-01-01",
+                f"{end_year}-12-31",
+            )
+        }
+    )
+
+    return ds
+
 def open_exp(base_path, path):
     """Open dataset lazily (no slicing here)."""
     return xr.open_mfdataset(str(base_path / path), combine="by_coords", chunks={})
@@ -222,6 +256,14 @@ def global_toa_ts(ds):
     net_gm = net_ann.weighted(weights).mean(("lat", "lon"))
 
     return net_gm
+
+def global_surface_net_radiation(ds):
+
+    net_sfc = (
+        ds["rsns"]+ ds["rlns"]
+    )
+
+    return global_mean(net_sfc)
 
 def calculate_ecs(global_means, co2_levels):
     """
@@ -1830,3 +1872,80 @@ DEEP_MIP_MODEL_STYLES = {
     "NorESM":    {"color": "pink",      "marker": "v"},
     "EC-EARTH4": {"color": "green",     "marker": "X"},
 }
+
+def plot_radiation_balance(
+    toa,
+    sfc,
+    difference,
+    title,
+    save,
+):
+
+    fig, axes = plt.subplots(
+        2,
+        1,
+        figsize=(10, 8),
+        sharex=True,
+    )
+
+    # --------------------------------------------------
+    # Net TOA and net SFC
+    # --------------------------------------------------
+
+    for exp in toa:
+
+        axes[0].plot(
+            toa[exp]["time_counter"],
+            toa[exp],
+            label=f"{exp} TOA",
+        )
+
+        axes[0].plot(
+            sfc[exp]["time_counter"],
+            sfc[exp],
+            linestyle="--",
+            label=f"{exp} SFC",
+        )
+
+    axes[0].axhline(
+        0,
+        linestyle=":",
+        linewidth=1,
+    )
+
+    axes[0].set_ylabel("Net radiation (W m$^{-2}$)")
+    axes[0].set_title("Net TOA and net SFC radiation")
+    axes[0].legend()
+
+    # --------------------------------------------------
+    # Difference
+    # --------------------------------------------------
+
+    for exp in difference:
+
+        axes[1].plot(
+            difference[exp]["time_counter"],
+            difference[exp],
+            label=exp,
+        )
+
+    axes[1].axhline(
+        0,
+        linestyle=":",
+        linewidth=1,
+    )
+
+    axes[1].set_ylabel(
+        "TOA − SFC (W m$^{-2}$)"
+    )
+
+    axes[1].set_xlabel("Year")
+    axes[1].set_title(
+        "TOA − SFC radiation imbalance"
+    )
+
+    axes[1].legend()
+
+    plt.tight_layout()
+    plt.savefig(save, dpi=300)
+    plt.close()
