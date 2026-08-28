@@ -16,7 +16,7 @@ eocene_tools/
 ## Requirements
 You need:
 - a Python environment with the project dependencies installed
-- access to EC-Earth4 simulation outputs.
+- acces to EC-Earth4 simulation outputs.
 - access to the DeepMIP dataset
 - external tools required by the selected workflow, especially `cdo` for several operations
 
@@ -27,23 +27,15 @@ git clone https://github.com/renatacoppo/eoctools
 cd eocene-tools
 
 Create the conda environment:
-```bash
 mamba env create -f environment.yml
-```
 or
-```bash
 conda env create -f environment.yml
-```
 
 Activate the environment:
-```bash
 conda activate eoctools
-```
 
 Install the package in editable mode:
-```bash
 pip install -e .
-```
 
 ## Dependencies
 
@@ -55,16 +47,16 @@ xarray
 PyYAML
 ecCodes
 
-See `environment.yml` for the complete software environment.
+See environment.yml for the complete software environment.
 
 ## Running the remapping workflow
 
-The remapping workflow produces reproducible workflows to extract variables from model output, compute annual means, remap data to common grids of 2° × 2° (if needed), and saves them in a new folder. 
+The remapping workflow produces reproducible workflows to extract variables from model output, compute annual means, remap data to common grids of 2ºx2º (if needed), and saves them in a new folder. 
 
 It produces three main files:
-- `atm_annual_mean_{first_year}-{last_year}.nc`  
-- `oce_annual_mean_{first_year}-{last_year}.nc`
-- `moc_annual_mean_{first_year}-{last_year}.nc`
+- atm_annual_mean_{first_year}-{last_year}.nc  
+- oce_annual_mean_{first_year}-{last_year}.nc
+- moc_annual_mean_{first_year}-{last_year}.nc
 
 The main entry point is:
 
@@ -102,16 +94,6 @@ The remapping workflow is configured through a YAML file specifying:
 - filename filters (for selecting the file type from the simulation output)
 
 ## Running the data_analysis workflow
-*
-*
-*
 
-# Author
-Renata Coppo
-postdoc Researcher
-ISAC-CNR, Italy
 
-# Citation
-If you use Eocene Tools in your research, please cite this repository:
-Coppo, R. (2026). *Eocene Tools*. GitHub repository.
-https://github.com/renatacoppo/eoctools
+
