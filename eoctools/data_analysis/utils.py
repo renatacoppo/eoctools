@@ -1,3 +1,14 @@
+#==================================================#
+# - UTILITY FUNCTIONS FOR CLIMATE MODEL ANALYSIS - #
+#==================================================#
+
+# This module contains helper functions used throughout the climate-model analysis workflow.
+# The input data are assumed to already contain annual mean values.
+
+#==================================================#
+# ------------------ IMPORTS --------------------- #
+#==================================================#
+
 import xarray as xr
 import numpy as np
 from pathlib import Path
@@ -5,13 +16,37 @@ import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 from cartopy.util import add_cyclic_point
 
-# open datasets
+#==================================================#
+# ---------------- DATA LOADING -------------------#
+#==================================================#
+
 def load_last_years(
     file_path,
     nyears=100,
     time_dim="time_counter",
     end_year=None,
 ):
+    """
+    Open a dataset and retain only the last nyears complete simulation years.
+    This is useful for equilibrium or quasi-equilibrium analysis whete the climate 
+    state is represented by the final part of a long simulation.
+
+    Parameters
+    file_path : str ot Path
+                Path to the NetCDF dataset
+    nyears : int, default=100
+            Number of years to retain
+    time_dim : str, default="time_counter"
+            Name of the time coordinate.
+    end_year : int, optional
+            Final year to include. If omitted, the last 
+            available year is used
+
+    Returs
+    xarray.Dataset
+        Dataset sliced from January 1 of the first selected year 
+        through December of the final selected year
+    """
     ds = xr.open_dataset(file_path)
 
     # Determine final year
@@ -31,6 +66,7 @@ def load_last_years(
 
     return ds
 
+
 def load_simulation(
     file_path,
     skip_years=10,
@@ -38,8 +74,24 @@ def load_simulation(
     end_year=None,
 ):
     """
-    Load all years except the first `skip_years`,
-    optionally stopping at `end_year`.
+    Open a simulation while excluding an initial spin-up period.
+    The first "skip_years" are removed because climate simulations often need an adjustment
+    period before their statistics are representative of the simulated climate state.
+
+    Parameters
+    file_path : str ot Path
+            Path to the NetCDF dataset
+    skip_years : int, default=10
+            Number of initial simulations years to discard
+    time_dim : str, default="time_counter"
+            Name of the time coordinate.
+    end_year : int, optional
+            Final year to include. If omitted, the last
+            available year is used
+
+    Returs
+    xarray.Dataset
+        Dataset excluding the initial spin-up period
     """
 
     ds = xr.open_dataset(file_path)
@@ -65,68 +117,107 @@ def load_simulation(
 
     return ds
 
-def open_exp(base_path, path):
-    """Open dataset lazily (no slicing here)."""
-    return xr.open_mfdataset(str(base_path / path), combine="by_coords", chunks={})
 
-# annual weighted mean
-def annual_mean(da):
-    """Compute time-weighted annual mean."""
-    w = da.time_counter.dt.days_in_month
-    annual = (da * w).resample(time_counter="1YE").sum() / w.resample(time_counter="1YE").sum()
-    return annual.mean("time_counter")
+#======================================#
+# ----- GENERAL SPATIAL AVERAGING ---- #
+#======================================#
 
 # global mean
-def global_mean(da):
-    """Area-weighted global mean for (lat, lon) DataArray."""
+def global_mean(da): 
+    """
+    Compute an area-weighted global mean.
+    Latitude weighting using cos (latitude) approximates the changing area 
+    of lat-lon grid cells toward the poles.
+
+    Parameters
+    da: xarray.DataArray
+        Field with dimensions including 'lat' and 'lon'.
+    
+    Returns
+    xarray.DataArray
+        Area-weighted global mean.
+    """
+
     weights = np.cos(np.deg2rad(da.lat))
     return da.weighted(weights).mean(("lat", "lon"))
 
 def zonal_mean(da):
     """
     Compute latitude-weighted zonal mean.
+    The longitude dimension is averaged, leaving a latitude-dependent profil
+
+    Parameters
+    da : xarray.DataArray
+        Field containing longitude and latitude dimensions.
+
+    Returns
+    xarray.DataArray
+        Zonal mean as a function of latitude
     """
+
+    # Latitude weights are included for consistency with other spatial averaging functions,
+    # although they do not affect a simple longitude mean.
+
     weights = np.cos(np.deg2rad(da.lat))
     weights = weights / weights.mean()
+
     return da.weighted(weights).mean("lon")
+
+#===========================================#
+# SEA SURFACE TEMPERATURE (SST) DIAGNOSTICS #
+#===========================================#
 
 def regional_mean_sst(da, lat_min, lat_max):
     """
-    Area-weighted mean SST over a latitude band.
+    Compute the area-weighted mean SST over a latitude band.
+    The function accepts either an xarray Dataset containing 'tos'
+    or a DataArray. It also supports several common names for latitude,
+    longitude and time dimensions.
+    
+    Parameters
+    da : xarray.Dataset or xarray.DataArray
+        SST dataset of field
 
-    Works with:
-    (lat, lon)
-    (time, lat, lon)
-    or weird CMIP time names.
+    lat_min : float
+        Southern boundary of the latitude band
+
+    lat_max : float
+        Northern boundary of the latitude band
+
+    Returns:
+    xarray.DataArray
+        Area-weighted mean SST over the selected latitude band.
+    
     """
 
-    # ---- if dataset, grab tos automatically ----
+    # If a Dataset is provided, automatically extract sea surface temperature.
     if isinstance(da, xr.Dataset):
         if "tos" in da:
             da = da["tos"]
         else:
             raise ValueError("Dataset does not contain 'tos'")
 
-    # ---- detect coordinate names ----
+    # Support both common CMIP coordinate naming conventions
     lat_name = "lat" if "lat" in da.dims else "latitude"
     lon_name = "lon" if "lon" in da.dims else "longitude"
 
-    # ---- detect time dimension FLEXIBLY ----
-    possible_time_names = ["time", "month", "time_counter", "t"]
+    # Identify the time dimension if one is persent
+    possible_time_names = ["time", "month", "year", "time_counter", "t"]
     time_name = next((d for d in possible_time_names if d in da.dims), None)
 
     lat = da[lat_name]
 
-    # ---- make slice work regardless of latitude order ----
+    # Latitude coordinates may run north-to-south ot south-to-north
+    # Select the correct slice in either case.
     if lat[0] > lat[-1]:
         da_sel = da.sel({lat_name: slice(lat_max, lat_min)})
     else:
         da_sel = da.sel({lat_name: slice(lat_min, lat_max)})
 
-    # ---- weights ----
+    # Approximate grid-cell area using cosine latitude weighting
     weights = np.cos(np.deg2rad(da_sel[lat_name]))
 
-    # ---- dimensions to average over ----
+    # Average horizontally and, if present, over time
     dims = [lat_name, lon_name]
     if time_name is not None:
         dims.append(time_name)
@@ -134,156 +225,161 @@ def regional_mean_sst(da, lat_min, lat_max):
     return da_sel.weighted(weights).mean(dim=dims)
 
 def high_lat_mean_sst(da):
+    """
+    Compute the mean SST of the two high-latitude regions.
+    Ther Arctic and Antarctic latitude bands are calculated separatedly and
+    then averaged so that both polar regions contribute equally.
+
+    High-latitude regions are defined as:
+        60°N to 90°N
+        90°S to 60°S
+    """
     north = regional_mean_sst(da, 60, 90)
     south = regional_mean_sst(da, -90, -60)
     return 0.5 * (north + south)
 
-def global_mean_tas(ds):
-    tas = ds["tas"]
-
-    # detect time dimension name
-    for dim in ["month", "time", "t", "time_counter"]:
-        if dim in tas.dims:
-            tas = tas.mean(dim)
-            break
-
-    # Kelvin → Celsius
-    tas = tas - 273.15
-
-    # latitude weights
-    weights = np.cos(np.deg2rad(tas.latitude))
-
-    gm = tas.weighted(weights).mean(("latitude", "longitude"))
-
-    return gm.values
-
-# Annual global mean TAS timeseries
-def annual_global_mean_tas(ds):
+def trop_mean_sst(da):
     """
-    Compute global mean TAS per year.
-    Returns a DataArray with 'time_counter' = year end.
+    Compute the mean SST over the tropical latitude band.
+    The tropics are defined here as 31°S to 31°N
     """
-    tas = ds["tas"] - 273.15  # Kelvin → Celsius
-
-    # Time weights for monthly data
-    w = tas.time_counter.dt.days_in_month
-
-    # Compute weighted annual mean
-    annual = (tas * w).resample(time_counter="1YE").sum() / w.resample(time_counter="1YE").sum()
-
-    # Latitude weights for global mean
-    weights = np.cos(np.deg2rad(annual.lat))
-
-    lat_name = "lat" if "lat" in ds.dims else "latitude"
-    lon_name = "lon" if "lon" in ds.dims else "longitude"
-    gm_annual = annual.weighted(weights).mean((lat_name, lon_name))
-
-    return gm_annual
-
-def annual_ts(da):
-    w = da.time_counter.dt.days_in_month
-    return (da * w).resample(time_counter="1YE").sum() / w.resample(time_counter="1YE").sum()
+    trop = regional_mean_sst(da, -31, 31)
+    return trop
 
 def global_mean_sst(da):
     """
-    Area-weighted global mean SST.
+    Compute the area-weighted global mean SST.
 
-    Works with Dataset or DataArray.
-    Automatically:
-      - extracts 'tos'
-      - detects lat/lon names
-      - detects time dimension
-      - computes annual mean
+    The function accepts either a Dataset containing 'tos' or an SST
+    DataArray. Coordinate names are detected automatically.
+
+    If a time dimension is present, the field is first averaged over time.
+
+    Parameters
+    da : xarray.DataArray
+        SST dataset or field
+
+    Returns
+    xarray.DataArray
+        Area-weighted global mean SST
     """
 
-    # ---- if dataset, grab tos ----
+    # Automatically extract SST from a Dataset
     if isinstance(da, xr.Dataset):
         if "tos" in da:
             da = da["tos"]
         else:
             raise ValueError("Dataset does not contain 'tos'")
 
-    # ---- detect coordinate names ----
+    # Detect coordinate naming convention
     lat_name = "lat" if "lat" in da.dims else "latitude"
     lon_name = "lon" if "lon" in da.dims else "longitude"
 
-    # ---- detect time dimension FLEXIBLY ----
-    possible_time_names = ["time", "month", "time_counter", "t"]
+    # Detect a possible time dimension
+    possible_time_names = ["time", "month", "year", "time_counter", "t"]
     time_name = next((d for d in possible_time_names if d in da.dims), None)
 
-    # ---- compute annual mean if time exists ----
+    # Convert a time-dependent field into a climatological mean.
     if time_name is not None:
         da = da.mean(dim=time_name)
 
-    # ---- weights ----
+    # Apply latitude-based area weighting.
     weights = np.cos(np.deg2rad(da[lat_name]))
 
     return da.weighted(weights).mean(dim=(lat_name, lon_name))
 
-def simple_regional_mean_sst(da, lat_min, lat_max):
+
+#===================================================#
+# --- SURFACE AIR TEMPERATURE (TAS) DIAGNOSTICS --- #
+#===================================================#
+
+def global_mean_tas(ds):
     """
-    Area-weighted mean SST over a latitude band.
-    da must have dimensions (lat, lon)
+    Compute the area-weighted global mean surface air temperature.
+    The function:
+    1. Extracts 'tas'
+    2. Averaged over the available time dimension
+    3. Converts Kelvin to Celsius
+    4. Computes a cosine-latitude-weighted global mena
+
+    Parameters
+    ds : xarray.Dataset
+        Dataset containing the 'tas' variable
+
+    Returns
+    numpy scalar
+        Global mean surface air temperature in °C
     """
-    # select latitude band
-    da_sel = da.sel(lat=slice(lat_min, lat_max))
-    
-    # latitude weights
-    weights = np.cos(np.deg2rad(da_sel.lat))
-    
-    return da_sel.weighted(weights).mean(dim=("lat", "lon"))
+    tas = ds["tas"]
 
-def trop_mean_sst(da):
-    trop = regional_mean_sst(da, -31, 31)
-    return trop
+    # Average over whichever supported time dimension is present.
+    for dim in ["month", "time", "t", "time_counter"]:
+        if dim in tas.dims:
+            tas = tas.mean(dim)
+            break
 
-def global_toa_ts(ds):
+    # Convert Kelvin to Celsius
+    tas = tas - 273.15
+
+    # Area weighting for a regular latitude-longitude grid.
+    weights = np.cos(np.deg2rad(tas.latitude))
+
+    gm = tas.weighted(weights).mean(("latitude", "longitude"))
+
+    return gm.values
+
+
+def polar_mean(da, lat_threshold=60):
     """
-    Annual global mean TOA net radiation (W m-2)
-    Returns one value per year.
-    """
-
-    # --- net radiation ---
-    net = ds["rsdt"] - ds["rsut"] - ds["rlut"]
-
-    # --- annual mean (time-weighted like TAS) ---
-    net_ann = annual_ts(net)
-
-    # --- area weights ---
-    weights = np.cos(np.deg2rad(net_ann.lat))
-
-    # --- global mean per year ---
-    net_gm = net_ann.weighted(weights).mean(("lat", "lon"))
-
-    return net_gm
-
-def global_surface_net_radiation(ds):
-
-    net_sfc = (
-        ds["rsns"]+ ds["rlns"]
-    )
-
-    return global_mean(net_sfc)
-
-def calculate_ecs(global_means, co2_levels):
-    """
-    Calculate ECS from a linear fit of global mean temperature
-    against log2(CO2).
+    Compute an area-weighted mean over both polar regions.
 
     Parameters
     ----------
+    da : xarray.DataArray
+        DataArray with lat/lon dimensions.
+
+    lat_threshold : float, default=60
+        Minimum absolute latitude defining the polar region.
+
+    Returns
+    -------
+    xarray.DataArray
+        Area-weighted mean over both polar regions combined.
+    """
+
+    # Retain only grid cells poleward of the selected latitude threshold
+    polar = da.where(
+        np.abs(da.lat) >= lat_threshold,
+        drop=True
+    )
+
+    weights = np.cos(np.deg2rad(polar.lat))
+
+    return polar.weighted(weights).mean(("lat", "lon"))
+
+def calculate_ecs(global_means, co2_levels):
+    """
+    Estimate equilibrium climate sensitivity (ECS) from a linear CO2 response.
+
+    Global mean temperature is fitted as a linear function of log2(CO2).
+    The fitted slope therefore represents the temperature response associate with
+    the doubling of atmospheric CO2.
+
+    Parameters
     global_means : dict
-        Experiment names and global mean temperatures.
+        Mapping between experiment names and global mean temperatures.
 
     co2_levels : dict
-        Experiment names and CO2 multipliers.
+        Mapping between experiment names and CO2 multipliers relative to the
+        reference concentration.
 
     Returns
     -------
     ecs : float
-        Temperature response per CO2 doubling.
+        Estimated temperature response per CO2 doubling in °C.
     """
 
+    # Extract CO2 multipliers in the same experiment order as temperatures.
     co2 = np.array(
         [
             co2_levels[k]
@@ -298,6 +394,7 @@ def calculate_ecs(global_means, co2_levels):
         ]
     )
 
+    # A cO2 doubling corresponds to an increase of one in log2(CO2).
     x = np.log2(co2)
 
     slope, intercept = np.polyfit(
@@ -306,45 +403,122 @@ def calculate_ecs(global_means, co2_levels):
         1
     )
 
+    # The slope is the temperature change per CO2 doubling.
     return slope
 
-def polar_mean(da, lat_threshold=60):
-    """
-    Area-weighted mean over both polar regions.
-
-    Parameters
-    ----------
-    da : xarray.DataArray
-        DataArray with lat/lon dimensions.
-
-    lat_threshold : float
-        Minimum absolute latitude defining the polar region.
-
-    Returns
-    -------
-    xarray.DataArray
-        Area-weighted polar mean.
-    """
-
-    polar = da.where(
-        np.abs(da.lat) >= lat_threshold,
-        drop=True
-    )
-
-    weights = np.cos(np.deg2rad(polar.lat))
-
-    return polar.weighted(weights).mean(("lat", "lon"))
-
+#==========================================#
+# ---- PRECIPITATION (PR) DIAGNOSTICS ---- #
+#==========================================#
 
 def prepare_pr(da):
-    """Convert kg m-2 s-1 → mm/day and compute annual mean."""
+    """
+    Convert precipitation from kg m-2 s-1 to mm/day.
+    The conversion assumes liquid-water density such that:
+    1 kg m⁻² = 1 mm of water
+
+    Parameters
+    da : xarray.DataArray
+        Precipitation rate in kg m-2 s-1
+
+    Returns
+    xarray.DataArray
+        Precipitation rate in mm day-1.
+    """
+
+    # Convert seconds to days
     da = da * 86400.0
+
     da.attrs["units"] = "mm/day"
     return (da)
+
+#==========================================#
+# RADIATION AND ENERGY BALANCE DIAGNOSTICS #
+#==========================================#
+
+def global_toa_ts(ds):
+    """
+    Compute the annual global mean net TOA radiation time series (W m-2)
+    Net top-of-atmosphere radiation is calculated as:
+    incoming shortwave - reflected shortwave - outgoing longwave
+
+    Positive values indicate a net gain of energy by the climate system.
+
+    Parameters
+    ds : xarray.Dataset
+        Dataset containing 'rsdt', 'rsut', and 'rlut'.
+
+    Returns
+    xarray.DataArray
+        Annual global mean TOA net radiation in W m-2. One value per year
+    """
+
+    # Net radiative flux at the top of the atmosphere
+    net_toa = ds["rsdt"] - ds["rsut"] - ds["rlut"]
+
+    # Calculate latitude-based area weights
+    # Grid-cell area decreases towards the poles approximately as cos(latitude)
+    weights = np.cos(np.deg2rad(net_toa.lat))
+
+    # Global mean per year
+    net_gm = net_toa.weighted(weights).mean(("lat", "lon"))
+
+    return net_gm
+
+def global_surface_net_radiation(ds):
+    """
+    Compute the annual global mean net surface energy flux (W m-2).
+
+    The surface energy balance is calculated as:
+    
+    net surface flux =
+        surface net solar radiation 
+        + surface net thermal radiation 
+        - upward sensible heat flux 
+        - upward latent heat flux
+    
+    Positive values indicate a net downward energy flux into the surface.
+
+    Parameters
+    ds : xarray.Dataset
+        Dataset containing: 
+        - 'rsns': surface net shortwave radiation 
+        - 'rlns': surface net longwave radiation 
+        - 'hfss': upward sensible heat flux 
+        - 'hfls': upward latent heat flux
+
+    Returns
+    xarray.DataArray
+        Annual global mean net surface energy flux in W m-2.
+    """
+
+    # Net surface energy flux
+    net_sfc = (
+        ds["rsns"]
+        + ds["rlns"]
+        - ds["hfss"]
+        - ds["hfls"]
+    )
+
+    # Calculate latitude-based area weights
+    # Latitude-based area weighting
+    weights = np.cos(np.deg2rad(net_sfc.lat))
+
+    # Global mean per year
+    net_sfc_gm = (
+        net_sfc
+        .weighted(weights)
+        .mean(("lat", "lon"))
+    )
+
+    return net_sfc_gm
 
 ### -------------------------- ###
 ###     Plotting functions     ###
 ### -------------------------- ###
+
+#===============================#
+# ------- GLOBAL MAPS ----------#
+#===============================#
 
 def plot_reference_anomalies(
     reference, 
@@ -363,7 +537,10 @@ def plot_reference_anomalies(
     save=None,
 ):
     """
-    Plot one reference map and anomalies relative to it.
+    Plot a reference climatology map alongside anomalies from multiple experiments.
+
+    The first panel shows the absolute reference field. All remaining panels 
+    show anomalies relative to that reference.
 
     Parameters
     ----------
@@ -374,16 +551,16 @@ def plot_reference_anomalies(
         Dictionary of anomaly fields.
 
     reference_name : str
-        Name displayed in first panel.
+        Label for the reference experiment. Name displayed in first panel.
 
     absolute_title : str
-        Title of reference panel.
+        Title subfix for the reference field.
 
     anomaly_title : str
-        Suffix for anomaly titles.
+        Title suffix for anomaly panels.
 
-    absolute_levels, anomaly_levels : array-like
-        Contour levels.
+    absolute_levels, anomaly_levels : array-like, optional
+        Contour levels for absolute anomaly and anomaly fields.
 
     absolute_cmap, anomaly_cmap
         Colormaps.
@@ -410,8 +587,8 @@ def plot_reference_anomalies(
     if nexp == 1:
         axes = np.asarray(axes)
 
-    # ---------------- reference ----------------
-
+    # Reference field
+    # Add a cyclic longitude point to avoid a visual gap at the map boundary
     ref_cyc, lon_cyc = add_cyclic_point(
         reference,
         coord=reference.lon,
@@ -430,8 +607,7 @@ def plot_reference_anomalies(
     axes[0].set_title(f"{reference_name}: {absolute_title}")
     axes[0].set_global()
 
-    # ---------------- anomalies ----------------
-
+    # Anomaly fields 
     for i, exp in enumerate(experiments, start=1):
 
         da = anomalies[exp]
@@ -454,8 +630,7 @@ def plot_reference_anomalies(
         axes[i].set_title(f"{exp}: {anomaly_title}")
         axes[i].set_global()
 
-    # ---------------- colorbars ----------------
-
+    # Colorbars 
     cbar1 = fig.colorbar(
         cf_ref,
         ax=axes[0],
@@ -491,27 +666,30 @@ def plot_mean_map(
     save=None,
 ):
     """
-    Plot a single global mean field.
-
+    Plot a single global climatological field using a Robinson projection.
+    A cyclic longitude point is added to prevent a gap at the edge of the global map.
+    
     Parameters
     ----------
     field : xarray.DataArray
         Two-dimensional (lat, lon) field.
 
     experiment : str
-        Experiment name (e.g. "pi", "x3").
+        Experiment name
 
     title : str
-        Variable title.
+        Variable or diagnostic title.
 
     levels : array-like
         Contour levels.
 
-    cmap : matplotlib colormap
+    cmap : str or matplotlib colormap
 
     colorbar_label : str
+        Label for the colorbar
 
     save : str or Path, optional
+        Output filename
     """
 
     fig, ax = plt.subplots(
@@ -521,6 +699,7 @@ def plot_mean_map(
         subplot_kw={"projection": ccrs.Robinson()},
     )
 
+    # Close the longitude seam for global plotting
     field_cyc, lon_cyc = add_cyclic_point(
         field,
         coord=field.lon,
@@ -554,6 +733,10 @@ def plot_mean_map(
 
     plt.show()
 
+#==============================#
+# ------- ZONAL MEANS -------- #
+#==============================#
+
 def plot_zonal_mean(
     field,
     experiment,
@@ -564,15 +747,15 @@ def plot_zonal_mean(
     dpi=300,
 ):
     """
-    Plot zonal mean as a function of latitude.
+    Plot a zonal-mean field as a function of latitude.
 
     Parameters
     ----------
     field : xarray.DataArray
-        Zonal mean field with dimension (lat).
+        Latitude-dependent zonal mean.
 
     experiment : str
-        Experiment name (e.g. "pi", "x3").
+        Experiment name.
 
     title : str
         Plot title.
@@ -628,12 +811,12 @@ def plot_zonal_anomalies(
     dpi=300,
 ):
     """
-    Plot zonal mean anomalies as a function of latitude.
+    Plot zonal-mean anomalies for multiple experiments
 
     Parameters
     ----------
     anomalies : dict[str, xarray.DataArray]
-        Dictionary containing anomaly fields.
+        Mapping between experiment names and zonal anomaly profiles.
 
     title : str
         Plot title.
@@ -650,6 +833,7 @@ def plot_zonal_anomalies(
         dpi=dpi
     )
 
+    # Plot each experiment using the same latitude axis
     for exp, da in anomalies.items():
 
         plt.plot(
@@ -659,6 +843,7 @@ def plot_zonal_anomalies(
             label=exp
         )
 
+    # Highlight the zero-anomaly reference
     plt.axhline(
         0,
         color="k",
@@ -700,15 +885,44 @@ def plot_zonal_time(
     figsize=(8, 5),
     dpi=150
 ):
+    """
+    Plot the time evolution of a zonal-mean field.
+
+    The resulting contour plot shows latitude versus simulation year.
+
+    Parameters
+    field: xarray.DataArray
+        Field with dimensions (time_counter, lat).
+
+    experiment : str
+        Experiment name.
+    
+    title : str
+        Plot title
+    
+    cmap : str or matplotlib colormap
+        Colormap
+
+    colorbar_label : str
+        Colorbar label.
+    
+    levels : int or array-like
+        Contour levels.
+
+    save : str ot Path, optional.
+        Output filename.
+    """
 
     fig, ax = plt.subplots(
         figsize=figsize,
         dpi=dpi
     )
 
-    # Convert cftime dates to integer years
+    # Convert potentially cftime-based coordinates into integer calendar years
     years = field.time_counter.dt.year.values
     lat = field.lat.values
+
+    # Transpose so contourf receives dimensions as (lat, time)
     temperature = field.T.values
 
     cf = ax.contourf(
@@ -743,83 +957,11 @@ def plot_zonal_time(
     plt.show()
     plt.close(fig)
 
-def plot_zonal_time_old(
-    field,
-    experiment,
-    title,
-    cmap,
-    colorbar_label,
-    levels=20,
-    save=None,
-    figsize=(10, 5),
-    dpi=150,
-):
-    """
-    Plot zonal mean time evolution (latitude vs time).
 
-    Parameters
-    ----------
-    field : xarray.DataArray
-        Zonal mean field with dimensions (time_counter, lat).
 
-    experiment : str
-        Experiment name.
-
-    title : str
-        Plot title.
-
-    cmap : matplotlib colormap
-        Colormap.
-
-    colorbar_label : str
-        Colorbar label.
-
-    levels : int or array-like
-        Number of contour levels or explicit levels.
-
-    save : str or Path, optional
-        Output filename.
-    """
-
-    fig, ax = plt.subplots(
-        figsize=figsize,
-        dpi=dpi
-    )
-
-    cf = ax.contourf(
-        field.time_counter,
-        field.lat,
-        field.T,
-        levels=levels,
-        cmap=cmap,
-        extend="both"
-    )
-
-    cbar = fig.colorbar(
-        cf,
-        ax=ax,
-        orientation="vertical"
-    )
-
-    cbar.set_label(colorbar_label)
-
-    ax.set_xlabel("Year")
-    ax.set_ylabel("Latitude")
-
-    ax.set_title(
-        f"{experiment}: {title}"
-    )
-
-    plt.tight_layout()
-
-    if save is not None:
-        plt.savefig(
-            save,
-            bbox_inches="tight"
-        )
-
-    plt.show()
-
+#==================================#
+# -------- CO2 RESPONSE ---------- #
+#==================================#
 
 def plot_global_mean_vs_co2(
     values,
@@ -836,13 +978,17 @@ def plot_global_mean_vs_co2(
     save=None,
 ):
     """
-    Plot global mean value as a function of CO2 concentration.
+    Plot global mean climate values as a function of CO2 concentration.
+
+    Each experiment is plotted at its corresponding CO2 multiplier relative to the pre-industrial reference.
+
+    Optional ECS and polar amplification diagnostics can be included in the legend.
 
     Parameters
     ----------
     values : dict
         Dictionary with experiment names as keys and scalar xarray DataArrays
-        as values.
+        as ECS values.
 
         Example:
         {
@@ -852,7 +998,7 @@ def plot_global_mean_vs_co2(
         }
 
     co2_levels : dict
-        Dictionary mapping experiments to CO2 multipliers.
+        Dictionary mapping between experiment names and CO2 multipliers.
 
         Example:
         {
@@ -862,7 +1008,7 @@ def plot_global_mean_vs_co2(
         }
     
     ecs : float, optional
-        Equilibrium climate sensitivity.
+        Equilibrium climate sensitivity to display in the legend
 
     polar_amp : dict, optional
         Dictionary containing the polar amplification factor for each
@@ -905,6 +1051,7 @@ def plot_global_mean_vs_co2(
             label=f"{exp}: {value:.2f}"
         )
 
+        # Label the experiment directly above its point.
         plt.text(
             co2,
             value + 0.15,
@@ -924,14 +1071,12 @@ def plot_global_mean_vs_co2(
     if title is not None:
         plt.title(title)
 
+    # Use the available CO2 multipliers as x-axis ticks.
     plt.xticks(
         sorted(set(co2_levels.values()))
     )
 
-    # -----------------------------
     # Legend
-    # -----------------------------
-
     handles, labels = plt.gca().get_legend_handles_labels()
 
     # Add ECS as a text-only legend entry
@@ -946,7 +1091,7 @@ def plot_global_mean_vs_co2(
             )
         )
 
-    # Add polar amplification values
+    # Add polar amplification values as text-only legend entry
     if polar_amp is not None:
 
         handles.append(
@@ -987,143 +1132,210 @@ def plot_global_mean_vs_co2(
     plt.show()
     plt.close()
 
-def plot_global_mean_vs_co2_dp(
-    data,
-    title,
-    save,
-    model_styles,
-    figsize=(8, 5),
-    dpi=150,
+def plot_global_mean_vs_logco2(
+    values,
+    logco2_levels,
+    ylabel="Global mean precipitation (mm/day)",
+    xlabel="log₂(CO₂)",
+    title=None,
+    ylim=None,
+    xlim=None,
+    figsize=(6, 4),
+    dpi=300,
+    save=None,
 ):
     """
-    Plot global mean surface temperature against CO2 concentration.
+    Plot global mean values as a function of log2(CO2),
+    including a linear regression.
+
+    Because CO2 forcing scales approximately with the logarithm of CO2
+    concentration, plotting climate variables against log2(CO2) provides a
+    convenient way to examine approximately linear responses.
 
     Parameters
     ----------
-    data : list of dict
-        Plotting data. Each dictionary must contain:
-        "model", "CO2", "T", and "pi".
+    values : dict
+        Dictionary with experiment names as keys and scalar values
+        (or scalar xarray.DataArrays) as values.
 
-    title : str
+    co2_levels : dict
+        Dictionary mapping experiment names to CO2 multipliers.
+
+    ylabel : str
+        Y-axis label.
+
+    xlabel : str
+        X-axis label.
+
+    title : str, optional
         Figure title.
 
-    save : Path
+    ylim : tuple, optional
+        Y-axis limits.
+
+    xlim : tuple, optional
+        X-axis limits.
+
+    save : str or Path, optional
         Output filename.
 
-    model_styles : dict
-        Dictionary defining color and marker for each model.
+    Returns
+    slope : float
+        Regression slope
 
-    figsize : tuple
-        Figure size.
-
-    dpi : int
-        Figure resolution.
+    intercept : float
+        Regression intercept
     """
 
-    fig, ax = plt.subplots(
+    plt.figure(figsize=figsize, dpi=dpi)
+
+    experiments = []
+    x = []
+    y = []
+
+    # Collect valid experiment/value pairs.
+    for exp, value in values.items():
+
+        if exp not in logco2_levels:
+            continue
+
+        xi = float(logco2_levels[exp])
+        yi = float(value)
+
+        if not np.isfinite(xi) or not np.isfinite(yi):
+            continue
+
+        experiments.append(exp)
+        x.append(xi)
+        y.append(yi)
+
+    x = np.asarray(x)
+    y = np.asarray(y)
+
+    # Remove invalid values
+    valid = np.isfinite(x) & np.isfinite(y)
+
+    x = x[valid]
+    y = y[valid]
+
+    experiments = [
+        exp for exp, valid_value in zip(
+            experiments,
+            valid
+        )
+        if valid_value
+    ]
+
+    if len(x) < 2:
+        raise ValueError(
+            "At least two valid experiments are required "
+            "for the regression."
+        )
+
+    # Fit a first-order response to log2(CO2).
+    slope, intercept = np.polyfit(x, y, 1)
+
+    x_fit = np.linspace(
+        x.min(),
+        x.max(),
+        100
+    )
+
+    y_fit = slope * x_fit + intercept
+
+    # Plot
+    plt.figure(
         figsize=figsize,
-        dpi=dpi,
+        dpi=dpi
     )
 
-    models = sorted(
-        set(d["model"] for d in data)
-    )
+    # Plot experiment values
+    for exp, xi, yi in zip(experiments, x, y):
 
-    for model in models:
-
-        style = model_styles[model]
-
-        model_data = [
-            d for d in data
-            if d["model"] == model
-        ]
-
-        # Sort by CO2
-        model_data = sorted(
-            model_data,
-            key=lambda d: d["CO2"],
+        plt.scatter(
+            xi,
+            yi,
+            s=80,
+            label=f"{exp}: {yi:.2f}"
         )
 
-        xs = np.array([
-            d["CO2"]
-            for d in model_data
-        ])
-
-        ys = np.array([
-            d["T"]
-            for d in model_data
-        ])
-
-        # Connecting line
-        ax.plot(
-            xs,
-            ys,
-            color=style["color"],
-            linewidth=1.5,
-            zorder=2,
+        plt.text(
+            xi,
+            yi + 0.02 * (y.max() - y.min()),
+            exp,
+            ha="center"
         )
 
-        # Points
-        for d in model_data:
-
-            size = 40 if d["pi"] else 120
-
-            ax.scatter(
-                d["CO2"],
-                d["T"],
-                color=style["color"],
-                marker=style["marker"],
-                s=size,
-                edgecolor="k",
-                zorder=3,
-            )
-
-    # Labels
-    ax.set_xlabel(
-        "CO₂ concentration (× pre-industrial)"
-    )
-
-    ax.set_ylabel(
-        "Global mean surface temperature (°C)"
-    )
-
-    ax.set_title(title)
-
-    ax.grid(
-        True,
-        alpha=0.4,
+    # Plot fitted linear response
+    plt.plot(
+        x_fit,
+        y_fit,
         linestyle="--",
+        linewidth=2,
+        label=(
+            f"Regression\n"
+            f"slope = {slope:.3f}\n"
+            f"intercept = {intercept:.3f}"
+        )
     )
+
+    # Axis limits
+    if xlim is not None:
+        plt.xlim(*xlim)
+
+    if ylim is not None:
+        plt.ylim(*ylim)
+
+    # X ticks at regular log2(CO2) intervals
+    max_logco2 = int(np.ceil(max(logco2_levels.values())))
+
+    xticks = np.arange(
+        0,
+        max_logco2 + 1
+    )
+
+    plt.xticks(
+        xticks,
+        labels=[
+            f"{int(x)}" for x in xticks
+        ]
+    )
+
+    # Labels and title
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+
+    if title is not None:
+        plt.title(title)
 
     # Legend
-    for model in models:
-
-        style = model_styles[model]
-
-        ax.scatter(
-            [],
-            [],
-            color=style["color"],
-            marker=style["marker"],
-            label=model,
-        )
-
-    ax.legend(
-        title="Model",
-        bbox_to_anchor=(1.05, 1),
-        loc="upper left",
+    plt.legend(
+        title="Global mean"
     )
 
-    fig.tight_layout()
+    # Grid
+    plt.grid(
+        True,
+        linestyle="--",
+        alpha=0.4
+    )
 
+    plt.tight_layout()
+
+    # Save
     if save is not None:
-        fig.savefig(
+        plt.savefig(
             save,
-            bbox_inches="tight",
+            bbox_inches="tight"
         )
 
     plt.show()
-    plt.close(fig)
+
+    return slope, intercept
+
+#======================================#
+# -------- GLOBAL TIME SERIES -------- #
+#======================================#
 
 def plot_global_timeseries(
     series,
@@ -1140,9 +1352,12 @@ def plot_global_timeseries(
 
     Parameters
     ----------
-    series : dict
-        Dictionary of xarray.DataArray objects with dimension
-        (time_counter,).
+    series : dict (str, xarray.DataArray)
+        Dictionary between experiment names and time series. 
+
+    use_model_years : bool, default=False
+        If True, use calendar/model years from 'time_counter'.
+        If False, plot years sequentially starting from 1
 
     ylabel : str
         Label for the y-axis.
@@ -1195,6 +1410,10 @@ def plot_global_timeseries(
 
     plt.show()
 
+#=======================================#
+# ----- TOA AND RADIATION BALANCE ----- #
+#=======================================#
+
 def plot_gregory(
     tas_series,
     toa_series,
@@ -1206,13 +1425,35 @@ def plot_gregory(
     dpi=150,
     save=None,
 ):
+    """
+    Create Gregory plots for one or more climate experiments.
+
+    A Gregory plot shows the relationship between global mean surface temperature
+    and net TOA radiation. A linear regression is fitted to each experiment to characterize
+    its radiative response.
+
+    The first (circle) and last (square) simulation years are highlighted separatedly.
+
+    Parameters
+    tas_series : dict[str, xarray.DataArray]
+            Annual global mean surface temperature time series.
+    
+    toa_series : dict[str, xarray.DataArray]
+            Corresponding annual global mean TOA radiation time series.
+
+    colors : dict, optional
+        Mapping between experiment names and plot colors.
+
+    save : str or Path, optional
+        Output filename.
+    """
 
     fig, ax = plt.subplots(
         figsize=figsize,
         dpi=dpi
     )
 
-    # Automatic colors
+    # Assign default Matplotlib colors if none are supplied
     if colors is None:
         color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
@@ -1230,14 +1471,14 @@ def plot_gregory(
         x = tas.values
         y = toa.values
 
-        # Check lengths
+        # TAS and TOA must represent the same years
         if len(x) != len(y):
             raise ValueError(
                 f"{k}: TAS has {len(x)} points, "
                 f"TOA has {len(y)} points"
             )
 
-        # Remove NaNs
+        # Remove years containing missing values (NaNs)
         valid = np.isfinite(x) & np.isfinite(y)
 
         x = x[valid]
@@ -1253,7 +1494,7 @@ def plot_gregory(
                 f"for regression."
             )
 
-        # Regression
+        # Linear Gregory regression
         slope, intercept = np.polyfit(x, y, 1)
 
         x_fit = np.linspace(
@@ -1266,7 +1507,7 @@ def plot_gregory(
 
         color = colors[k]
 
-        # Evolution
+        # Connect points to show the temporal evolution of the simulation.
         ax.plot(
             x,
             y,
@@ -1275,7 +1516,7 @@ def plot_gregory(
             linewidth=1
         )
 
-        # Scatter
+        # Annual values
         ax.scatter(
             x,
             y,
@@ -1284,7 +1525,7 @@ def plot_gregory(
             label=k
         )
 
-        # First year
+        # Mark the first simulation year
         ax.scatter(
             x[0],
             y[0],
@@ -1295,7 +1536,7 @@ def plot_gregory(
             zorder=3
         )
 
-        # Last year
+        # Mark the last simulation year
         ax.scatter(
             x[-1],
             y[-1],
@@ -1306,7 +1547,7 @@ def plot_gregory(
             zorder=3
         )
 
-        # Regression
+        # Regression line
         ax.plot(
             x_fit,
             y_fit,
@@ -1314,6 +1555,7 @@ def plot_gregory(
             linestyle="--"
         )
 
+    # Reference line representing radiative equilibrium.
     ax.axhline(
         0,
         color="k",
@@ -1343,223 +1585,112 @@ def plot_gregory(
 
     plt.show()
 
-def plot_global_mean_vs_logco2(
-    values,
-    logco2_levels,
-    ylabel="Global mean precipitation (mm/day)",
-    xlabel="log₂(CO₂)",
-    title=None,
-    ylim=None,
-    xlim=None,
-    figsize=(6, 4),
-    dpi=300,
-    save=None,
+
+def plot_radiation_balance(
+    toa,
+    sfc,
+    difference,
+    title,
+    save,
 ):
     """
-    Plot global mean values as a function of log2(CO2),
-    including a linear regression.
+    Plot global TOA and surface radiation balance (SFC) time series.
+
+    The figure contains two panels:
+        Top:
+            Net TOA radiation and net surface radiation
+        Bottom:
+            Difference between TOA and surface net radiation
 
     Parameters
-    ----------
-    values : dict
-        Dictionary with experiment names as keys and scalar values
-        (or scalar xarray.DataArrays) as values.
+    toa : dict[str, xarray.DataArray]
+        Annual global mean TOA radiation time series
+    
+    sfc : dict[str, xarray.DataArray]
+        Annual global mean surface radiation time series
 
-    co2_levels : dict
-        Dictionary mapping experiment names to CO2 multipliers.
+    difference : dict[str, xarray.DataArray]
+        TOA minus surface radiation imbalance
 
-    ylabel : str
-        Y-axis label.
-
-    xlabel : str
-        X-axis label.
-
-    title : str, optional
-        Figure title.
-
-    ylim : tuple, optional
-        Y-axis limits.
-
-    xlim : tuple, optional
-        X-axis limits.
+    title : str
+        Overall figure title
 
     save : str or Path, optional
-        Output filename.
+        Output filename
     """
 
-    # --------------------------------------------------
-    # Prepare data
-    # --------------------------------------------------
-
-    
-    plt.figure(figsize=figsize, dpi=dpi)
-
-    experiments = []
-    x = []
-    y = []
-
-    for exp, value in values.items():
-
-        if exp not in logco2_levels:
-            continue
-
-        xi = float(logco2_levels[exp])
-        yi = float(value)
-
-        if not np.isfinite(xi) or not np.isfinite(yi):
-            continue
-
-        experiments.append(exp)
-        x.append(xi)
-        y.append(yi)
-
-    x = np.asarray(x)
-    y = np.asarray(y)
-
-    # Remove invalid values
-    valid = np.isfinite(x) & np.isfinite(y)
-
-    x = x[valid]
-    y = y[valid]
-
-    experiments = [
-        exp for exp, valid_value in zip(
-            experiments,
-            valid
-        )
-        if valid_value
-    ]
-
-    if len(x) < 2:
-        raise ValueError(
-            "At least two valid experiments are required "
-            "for the regression."
-        )
-
-    # --------------------------------------------------
-    # Linear regression
-    # --------------------------------------------------
-
-    slope, intercept = np.polyfit(x, y, 1)
-
-    x_fit = np.linspace(
-        x.min(),
-        x.max(),
-        100
+    fig, axes = plt.subplots(
+        2,
+        1,
+        figsize=(10, 8),
+        sharex=True,
     )
 
-    y_fit = slope * x_fit + intercept
+    # Top panel: Net TOA and net SFC energy fluxes
+    for exp in toa:
 
-    # --------------------------------------------------
-    # Plot
-    # --------------------------------------------------
+        years = toa[exp]["time_counter"].dt.year
 
-    plt.figure(
-        figsize=figsize,
-        dpi=dpi
-    )
-
-    # Experiment points
-    for exp, xi, yi in zip(experiments, x, y):
-
-        plt.scatter(
-            xi,
-            yi,
-            s=80,
-            label=f"{exp}: {yi:.2f}"
+        axes[0].plot(
+            years,
+            toa[exp],
+            label=f"{exp} TOA",
         )
 
-        plt.text(
-            xi,
-            yi + 0.02 * (y.max() - y.min()),
-            exp,
-            ha="center"
+        axes[0].plot(
+            years,
+            sfc[exp],
+            linestyle="--",
+            label=f"{exp} SFC",
         )
 
-    # Regression line
-    plt.plot(
-        x_fit,
-        y_fit,
-        linestyle="--",
-        linewidth=2,
-        label=(
-            f"Regression\n"
-            f"slope = {slope:.3f}\n"
-            f"intercept = {intercept:.3f}"
-        )
-    )
-
-    # --------------------------------------------------
-    # Axis limits
-    # --------------------------------------------------
-
-    if xlim is not None:
-        plt.xlim(*xlim)
-
-    if ylim is not None:
-        plt.ylim(*ylim)
-
-    # --------------------------------------------------
-    # X ticks at regular log2(CO2) intervals
-    # --------------------------------------------------
-
-    max_logco2 = int(np.ceil(max(logco2_levels.values())))
-
-    xticks = np.arange(
+    # Zerp represents radiative balance
+    axes[0].axhline(
         0,
-        max_logco2 + 1
+        linestyle=":",
+        linewidth=1,
     )
 
-    plt.xticks(
-        xticks,
-        labels=[
-            f"{int(x)}" for x in xticks
-        ]
+    axes[0].set_ylabel("Net radiation (W m$^{-2}$)")
+    axes[0].set_title("Net TOA and net SFC radiation")
+    axes[0].legend()
+
+    # Bottom panel: TOA minus surface radiation
+    for exp in difference:
+
+        years = difference[exp]["time_counter"].dt.year
+
+        axes[1].plot(
+            years,
+            difference[exp],
+            label=exp,
+        )
+
+    axes[1].axhline(
+        0,
+        linestyle=":",
+        linewidth=1,
     )
 
-    # --------------------------------------------------
-    # Labels and title
-    # --------------------------------------------------
-
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-
-    if title is not None:
-        plt.title(title)
-
-    # --------------------------------------------------
-    # Legend
-    # --------------------------------------------------
-
-    plt.legend(
-        title="Global mean"
+    axes[1].set_ylabel(
+        "TOA − SFC (W m$^{-2}$)"
     )
 
-    # --------------------------------------------------
-    # Grid
-    # --------------------------------------------------
-
-    plt.grid(
-        True,
-        linestyle="--",
-        alpha=0.4
+    axes[1].set_xlabel("Year")
+    axes[1].set_title(
+        "TOA − SFC radiation imbalance"
     )
+
+    axes[1].legend()
 
     plt.tight_layout()
-
-    # --------------------------------------------------
-    # Save
-    # --------------------------------------------------
-
-    if save is not None:
-        plt.savefig(
-            save,
-            bbox_inches="tight"
-        )
-
+    plt.savefig(save, dpi=300)
     plt.show()
+    plt.close()
 
-    return slope, intercept
+#====================================#
+# ---- SST GRADIENT DIAGNOSTICS ---- #
+#====================================#
 
 def plot_sst_gradient_vs_global_mean(
     global_mean_sst,
@@ -1579,6 +1710,9 @@ def plot_sst_gradient_vs_global_mean(
     Plot meridional SST gradient against global mean SST
     for multiple experiments.
 
+    The meridional gradient is typically defined as the difference between
+    tropical and high-latitude SST.
+    
     The reference experiment is included in the plot and is
     identified by `reference`. All other experiments available
     in the input dictionaries are plotted automatically.
@@ -1596,6 +1730,9 @@ def plot_sst_gradient_vs_global_mean(
     reference : str, optional
         Name of the reference experiment. Default is "pi".
 
+    annotate : bool, defaulte=True
+        Whether experiment names should be displayed next to points.
+
     xlabel : str, optional
         Label for the x-axis.
 
@@ -1605,26 +1742,17 @@ def plot_sst_gradient_vs_global_mean(
     title : str, optional
         Figure title.
 
-    figsize : tuple, optional
-        Figure size.
-
-    dpi : int, optional
-        Figure resolution.
-
     ylim : tuple, optional
         Y-axis limits.
 
     xlim : tuple, optional
         X-axis limits.
 
-    annotate : bool, optional
-        Whether to write experiment names next to points.
-
     save : str or Path, optional
         Output filename.
     """
 
-    # Find experiments available in both dictionaries
+    # Retain only experiments available in both dictionaries
     experiments = [
         exp
         for exp in global_mean_sst
@@ -1715,7 +1843,11 @@ def plot_sst_gradient_vs_global_mean(
     plt.show()
 
 
-def plot_sst_gradient_vs_global_sst_dpn(
+#==================================#
+# --- DEEPMIP COMPARISON PLOTS --- #
+#==================================#
+
+def plot_global_mean_vs_co2_dp(
     data,
     title,
     save,
@@ -1724,7 +1856,25 @@ def plot_sst_gradient_vs_global_sst_dpn(
     dpi=150,
 ):
     """
-    Plot meridional SST gradient against global mean SST. For comparison with DeepMIP results.
+    Plot global mean surface temperature against CO2 concentration for multiple models.
+
+    This function is designed for comparisons with DeepMIP.style multi-model datasets.
+    Each model receives a consistent color and marker.
+
+    Parameters
+    ----------
+    data : list of dict
+        Plotting data. Each dictionary must contain:
+        "model", "CO2", "T", and "pi".
+
+    title : str
+        Figure title.
+
+    save : Path
+        Output filename.
+
+    model_styles : dict
+        Dictionary defining color and marker for each model.
     """
 
     fig, ax = plt.subplots(
@@ -1736,14 +1886,149 @@ def plot_sst_gradient_vs_global_sst_dpn(
         set(d["model"] for d in data)
     )
 
-    # --------------------------------------------------
-    # Scatter points
-    # --------------------------------------------------
+    for model in models:
 
+        style = model_styles[model]
+
+        model_data = [
+            d for d in data
+            if d["model"] == model
+        ]
+
+        # Sort experiments by CO2 concentration before connecting them.
+        model_data = sorted(
+            model_data,
+            key=lambda d: d["CO2"],
+        )
+
+        xs = np.array([
+            d["CO2"]
+            for d in model_data
+        ])
+
+        ys = np.array([
+            d["T"]
+            for d in model_data
+        ])
+
+        # Connecting line. Connect experiments belonging to the same model.
+        ax.plot(
+            xs,
+            ys,
+            color=style["color"],
+            linewidth=1.5,
+            zorder=2,
+        )
+
+        for d in model_data:
+
+            # Make the pre-industrial reference smaller than perturbation runs.
+            size = 40 if d["pi"] else 120
+
+            ax.scatter(
+                d["CO2"],
+                d["T"],
+                color=style["color"],
+                marker=style["marker"],
+                s=size,
+                edgecolor="k",
+                zorder=3,
+            )
+
+    # Labels
+    ax.set_xlabel(
+        "CO₂ concentration (× pre-industrial)"
+    )
+
+    ax.set_ylabel(
+        "Global mean surface temperature (°C)"
+    )
+
+    ax.set_title(title)
+
+    ax.grid(
+        True,
+        alpha=0.4,
+        linestyle="--",
+    )
+
+    # Create one legend entry per model
+    for model in models:
+
+        style = model_styles[model]
+
+        ax.scatter(
+            [],
+            [],
+            color=style["color"],
+            marker=style["marker"],
+            label=model,
+        )
+
+    ax.legend(
+        title="Model",
+        bbox_to_anchor=(1.05, 1),
+        loc="upper left",
+    )
+
+    fig.tight_layout()
+
+    if save is not None:
+        fig.savefig(
+            save,
+            bbox_inches="tight",
+        )
+
+    plt.show()
+    plt.close(fig)
+
+
+def plot_sst_gradient_vs_global_sst_dp(
+    data,
+    title,
+    save,
+    model_styles,
+    figsize=(8, 5),
+    dpi=150,
+):
+    """
+    Plot meridional SST gradient against global mean SST. For comparison with DeepMIP results.
+
+    This function is intended for comparison with DeepMIP-style multi-model results.
+
+    Each model is represented using a consistent color and marker. Experiments belonging to the 
+    same model are connected to highlight their response across climate states.
+
+    Parameters
+    data : list of dict
+        Each dictionary must contain:
+        "model", "x", "y", "exp", "pi"
+
+    title : str
+        Figure title
+
+    save : str of Path
+        Output filename.
+
+    model-styles : dict
+        Model-specific colors and markers
+    """
+
+    fig, ax = plt.subplots(
+        figsize=figsize,
+        dpi=dpi,
+    )
+
+    models = sorted(
+        set(d["model"] for d in data)
+    )
+
+    # Plot experiment points
     for d in data:
 
         style = model_styles[d["model"]]
 
+        # Use larger symbols for non-reference experiments
         size = 50 if d["pi"] else 130
 
         ax.scatter(
@@ -1756,6 +2041,7 @@ def plot_sst_gradient_vs_global_sst_dpn(
             zorder=3,
         )
 
+        # Label individual experiments
         ax.text(
             float(d["x"]) + 0.1,
             float(d["y"]) + 0.1,
@@ -1764,10 +2050,7 @@ def plot_sst_gradient_vs_global_sst_dpn(
             zorder=4,
         )
 
-    # --------------------------------------------------
-    # Connecting lines
-    # --------------------------------------------------
-
+    # Connecting lines. Connect experiments from the same model
     for model in models:
 
         style = model_styles[model]
@@ -1800,10 +2083,7 @@ def plot_sst_gradient_vs_global_sst_dpn(
             zorder=2,
         )
 
-    # --------------------------------------------------
     # Labels
-    # --------------------------------------------------
-
     ax.set_xlabel(
         "Global mean SST (°C)"
     )
@@ -1820,10 +2100,7 @@ def plot_sst_gradient_vs_global_sst_dpn(
         alpha=0.4,
     )
 
-    # --------------------------------------------------
-    # Legend
-    # --------------------------------------------------
-
+    # Model legend
     handles = []
 
     for model in models:
@@ -1860,6 +2137,14 @@ def plot_sst_gradient_vs_global_sst_dpn(
     plt.close(fig)
 
 
+#============================#
+# ------ MODEL STYLES ------ #
+#============================#
+
+# Consisten visual identity for DeepMIP comparison figures
+
+# Using a single dictionary ensures that each model has the 
+# same appearance across all plots in the analysis
 
 DEEP_MIP_MODEL_STYLES = {
     "IPSL":      {"color": "lightblue", "marker": "D"},
@@ -1873,79 +2158,3 @@ DEEP_MIP_MODEL_STYLES = {
     "EC-EARTH4": {"color": "green",     "marker": "X"},
 }
 
-def plot_radiation_balance(
-    toa,
-    sfc,
-    difference,
-    title,
-    save,
-):
-
-    fig, axes = plt.subplots(
-        2,
-        1,
-        figsize=(10, 8),
-        sharex=True,
-    )
-
-    # --------------------------------------------------
-    # Net TOA and net SFC
-    # --------------------------------------------------
-
-    for exp in toa:
-
-        axes[0].plot(
-            toa[exp]["time_counter"],
-            toa[exp],
-            label=f"{exp} TOA",
-        )
-
-        axes[0].plot(
-            sfc[exp]["time_counter"],
-            sfc[exp],
-            linestyle="--",
-            label=f"{exp} SFC",
-        )
-
-    axes[0].axhline(
-        0,
-        linestyle=":",
-        linewidth=1,
-    )
-
-    axes[0].set_ylabel("Net radiation (W m$^{-2}$)")
-    axes[0].set_title("Net TOA and net SFC radiation")
-    axes[0].legend()
-
-    # --------------------------------------------------
-    # Difference
-    # --------------------------------------------------
-
-    for exp in difference:
-
-        axes[1].plot(
-            difference[exp]["time_counter"],
-            difference[exp],
-            label=exp,
-        )
-
-    axes[1].axhline(
-        0,
-        linestyle=":",
-        linewidth=1,
-    )
-
-    axes[1].set_ylabel(
-        "TOA − SFC (W m$^{-2}$)"
-    )
-
-    axes[1].set_xlabel("Year")
-    axes[1].set_title(
-        "TOA − SFC radiation imbalance"
-    )
-
-    axes[1].legend()
-
-    plt.tight_layout()
-    plt.savefig(save, dpi=300)
-    plt.close()

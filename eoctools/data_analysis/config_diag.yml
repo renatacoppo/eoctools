@@ -49,6 +49,24 @@ experiments:
     oce: "processed/oce_annual_mean_1600-1799.nc"
     moc: "processed/moc_annual_mean_1600-1799.nc"
 
+  x1.2:
+    directory: "eex1"
+    co2: 1
+   #end_year: 1701 #Last complete year
+
+    atm: "processed/atm_annual_mean_1600-1649.nc"
+    oce: "processed/oce_annual_mean_1600-1649.nc"
+    moc: "processed/moc_annual_mean_1600-1649.nc"
+
+  x1.3:
+    directory: "tex1"
+    co2: 1
+   #end_year: 1701 #Last complete year
+
+    atm: "processed/atm_annual_mean_1600-1650.nc"
+    oce: "processed/oce_annual_mean_1600-1650.nc"
+    moc: "processed/moc_annual_mean_1600-1650.nc"
+
   x6:
     directory: "pex6"
     co2: 6

@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 from utils import global_mean_tas, plot_global_mean_vs_co2_dp, DEEP_MIP_MODEL_STYLES
-from utils import global_mean_sst, regional_mean_sst, plot_sst_gradient_vs_global_sst_dpn
+from utils import global_mean_sst, regional_mean_sst, plot_sst_gradient_vs_global_sst_dp
 
 class DeepMIPDiagnostics:
     """
@@ -271,7 +271,7 @@ class DeepMIPDiagnostics:
             / f"deepmip_sst_gradient_{experiment_string}.png"
         )
 
-        plot_sst_gradient_vs_global_sst_dpn(
+        plot_sst_gradient_vs_global_sst_dp(
             data=self.sst_data,
             title=(
                 "Meridional SST gradient vs global mean SST"
