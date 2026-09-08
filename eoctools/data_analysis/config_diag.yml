@@ -5,7 +5,7 @@ base_path: "/Users/renatacoppo/epochal/data-analysis/epochal"
 nyears: 100
 
 # Reference experiment
-reference: "pi"
+reference: "x3"
 
 # Plot directory
 plot_directory: "plots"
@@ -14,67 +14,94 @@ comparison_plot_directory: "comparison_plots"
 # Experiments
 experiments:
 
-  pi:
-    directory: "pix1"
-    co2: 1
+  #pi:
+  #  directory: "pix1"
+  #  co2: 1
 
-    atm: "processed/atm_annual_mean_1600-1799.nc"
-    oce: "processed/oce_annual_mean_1600-1799.nc"
-    moc: "processed/moc_annual_mean_1600-1799.nc"
+  #  atm: "processed/atm_annual_mean_1600-1799.nc"
+  #  oce: "processed/oce_annual_mean_1600-1799.nc"
+  #  moc: "processed/moc_annual_mean_1600-1799.nc"
 
-  x1:
-    directory: "pex1"
-    co2: 1
+  #x1.1:
+  #  directory: "oix1"
+  #  co2: 1
+   #end_year: 1701 #Last complete year
+
+  #  atm: "processed/atm_annual_mean_1600-1799.nc"
+  #  oce: "processed/oce_annual_mean_1600-1799.nc"
+  #  moc: "processed/moc_annual_mean_1600-1799.nc"
+
+  #x1.2:
+  #  directory: "eex1"
+  #  co2: 1
+   #end_year: 1701 #Last complete year
+
+  #  atm: "processed/atm_annual_mean_1600-1649.nc"
+  #  oce: "processed/oce_annual_mean_1600-1649.nc"
+  #  moc: "processed/moc_annual_mean_1600-1649.nc"
+
+  #x1.3:
+  #  directory: "tex1"
+  #  co2: 1
+   #end_year: 1701 #Last complete year
+
+  #  atm: "processed/atm_annual_mean_1600-1650.nc"
+  #  oce: "processed/oce_annual_mean_1600-1650.nc"
+  #  moc: "processed/moc_annual_mean_1600-1650.nc"
+
+  #x1.4:
+  #  directory: "xex1"
+  #  co2: 1
+   #end_year: 1701 #Last complete year
+
+  #  atm: "processed/atm_annual_mean_1600-1661.nc"
+  #  oce: "processed/oce_annual_mean_1600-1661.nc"
+  #  moc: "processed/moc_annual_mean_1600-1661.nc"
+
+  #x1:
+  #  directory: "pex1"
+  #  co2: 1
     
-    atm: "processed/atm_annual_mean_1600-1799.nc"
-    oce: "processed/oce_annual_mean_1600-1799.nc"
-    moc: "processed/moc_annual_mean_1600-1799.nc"
+  #  atm: "processed/atm_annual_mean_1600-1799.nc"
+  #  oce: "processed/oce_annual_mean_1600-1799.nc"
+  #  moc: "processed/moc_annual_mean_1600-1799.nc"
 
   # Optional experiments
   x3:
     directory: "nex3"
     co2: 3
 
-    #end_year: 1805 #Last complete year
+    end_year: 1805 #Last complete year
     atm: "processed/atm_annual_mean_1600-2099.nc"
     oce: "processed/oce_annual_mean_1600-2099.nc"
     moc: "processed/moc_annual_mean_1600-2099.nc"
 
-  x1.1:
-    directory: "oix1"
-    co2: 1
-   #end_year: 1701 #Last complete year
+  x3.1:
+    directory: "wex1"
+    co2: 3
 
-    atm: "processed/atm_annual_mean_1600-1799.nc"
-    oce: "processed/oce_annual_mean_1600-1799.nc"
-    moc: "processed/moc_annual_mean_1600-1799.nc"
-
-  x1.2:
-    directory: "eex1"
-    co2: 1
-   #end_year: 1701 #Last complete year
-
+    end_year: 1805 #Last complete year
     atm: "processed/atm_annual_mean_1600-1649.nc"
     oce: "processed/oce_annual_mean_1600-1649.nc"
     moc: "processed/moc_annual_mean_1600-1649.nc"
 
-  x1.3:
-    directory: "tex1"
-    co2: 1
-   #end_year: 1701 #Last complete year
+  x3.2:
+    directory: "wex3"
+    co2: 3
 
+    end_year: 1805 #Last complete year
     atm: "processed/atm_annual_mean_1600-1650.nc"
     oce: "processed/oce_annual_mean_1600-1650.nc"
     moc: "processed/moc_annual_mean_1600-1650.nc"
 
-  x6:
-    directory: "pex6"
-    co2: 6
-    end_year: 1701 #Last complete year
+  #x6:
+  #  directory: "pex6"
+  #  co2: 6
+  #  end_year: 1701 #Last complete year
 
-    atm: "processed/atm_annual_mean_1600-1702.nc"
-    oce: "processed/oce_annual_mean_1600-1702.nc"
-    moc: "processed/moc_annual_mean_1600-1702.nc"
+  #  atm: "processed/atm_annual_mean_1600-1702.nc"
+  #  oce: "processed/oce_annual_mean_1600-1702.nc"
+  #  moc: "processed/moc_annual_mean_1600-1702.nc"
 
 
 deepmip:

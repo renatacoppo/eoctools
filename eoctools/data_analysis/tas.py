@@ -5,92 +5,165 @@ from utils import plot_reference_anomalies, plot_mean_map, calculate_ecs, plot_z
 from utils import plot_zonal_anomalies, plot_zonal_time, plot_global_mean_vs_co2, plot_global_timeseries
 
 class TASDiagnostics:
-    def __init__(self, atm, reference, co2_levels, plot_dirs):
+    """
+    Calculate and plot surface air temperature (TAS) diagnostics.
+    The class operates on atmospheric datasets from multiple experiments.
+    Temperature is converted from Kelvin to degrees Celsius before diagnostics are calculated.
 
+    Diagnostics include spatial means, anomalies, zonal means, global means, temperature time series,
+    polar amplification, and equilibrium climate sensitivity.
+
+    Parameters
+    atm : dict[str, xarray.Dataset]
+        Dictionary containing atmospheric datasets for each experiment.
+
+    reference : str
+        Name of the reference experiment used to calculate anomalies.
+
+    co2_levels : dict[str, float]
+        Dictionary mapping experiment names to their atmospheric CO2 concentration relative to the pre-industrial value.
+
+    plot_dirs : dict[str, pathlib.Path]
+        Dictionary mapping experiment names to their base plot directories.
+    """
+    def __init__(self, atm, reference, co2_levels, plot_dirs):
+        """
+        Initialize the TAS diactnostics container.
+        The constructor stores the input datasets and initializes empty dictionaries that will later 
+        contain the calculated diagnostics.
+        """
+
+        # Input data and experiment configuration
         self.atm = atm
         self.reference = reference
         self.co2_levels = co2_levels
         self.plot_dirs = plot_dirs
 
+        # Temperature fiels
+        # Full TAS fields in degrees Celcius
         self.tas = {}
+
+        # Mean TAS field over the analysis period
         self.annual_mean = {}
+
+        # Spatial TAS anomalies relative to the reference experiment
         self.anomaly = {}
 
+        # Zonal diagnostics
+        # Time-mean zonal temperature profiles
         self.zonal_mean = {}
+
+        # Zonal temperature anomalies rerlative to the reference
         self.zonal_anom = {}
+
+        # Latitude-time evolution of zonal mean TAS
         self.zonal_ts = {}
 
+        # Global diagnostics
+        # Time-mean global surface air temperature
         self.global_mean = {}
+        
+        # Annual global mean TAS time series
         self.tas_ts = {}
 
+        # Polar amplification diagnostics
+        # Temperature change over the polar regions
         self.polar_warming = {}
+
+        #Global mean temperature change
         self.global_warming = {}
+
+        # Ratio of polar warming to global warming
         self.polar_amp = {}
 
+        # Equilibrium climate sensitivity
         self.ECS = None
 
     def run(self, plot=True, plot_experiment=None):
-
+        """
+        Run all TAS diagnostics.
+        The method first calculates all temperature diagnostics and then, optionally, generates the corresponding figures.
+        """
+        # Calculate all TAS diagnostics
         self._calculate()
         
+        # Generate figures if requested
         if plot:
             self._plot(plot_experiment=plot_experiment)
 
         return self
     
     def _calculate(self):
+        """
+        Calculate all surface air temperature diagnostics.
+        The calculations are performed in the following order:
+        1. Convert TAS from Kelvin to degrees Celcius.
+        2. Calculate mean temperature fields over the analysis period.
+        3. Calculate spatial anomalies relative to the reference experiment.
+        4. Calculate zonal mean temperature diagnostics.
+        5. Calculate global mean temperature diagnostics.
+        6. Calculate polar and global warming.
+        7. Calculate polar amplification.
+        8. Estimate equilibrium climate sensitivity.
+        """
              
-        #Define TAS
+        #1. TAS from Kelvin to degrees Celcius.
         self.tas = {
             k: ds["tas"] - 273.15
             for k, ds in self.atm.items()
         }
              
-        #Mean TAS over analysis period
+        #2. Mean temperature fields over the analysis period.
         self.annual_mean = {
             k: v.mean("time_counter")
             for k, v in self.tas.items()
         }
 
-        #Spatial anomalies relative to reference
+        #3. Spatial temperature anomalies relative to the reference experiment.
         self.anomaly = {
             k: self.annual_mean[k] - self.annual_mean[self.reference]
                 for k in self.annual_mean
                 if k != self.reference
         }
 
-        #Zonal mean
+        #4. Zonal mean temperature diagnostics.
         self.zonal_mean = {
             k: zonal_mean(v)
             for k, v in self.annual_mean.items()
         }
 
-        #Zonal anomalies
+        #5. Zonal temperature anomalies relative to the reference experiment
         self.zonal_anom = {
             k: self.zonal_mean[k] - self.zonal_mean[self.reference]
             for k in self.zonal_mean
             if k != self.reference
         }
 
-        #Zonal time series
+        #6. Latitude-time evolution
+        # Calculate the zonal mean for every year, preserving the time dimension 
+        # to show the evolution of temperature with latitude.
         self.zonal_ts = {
             k: zonal_mean(v)
             for k, v in self.tas.items()
         }
 
-        #Global mean
+        #7. Global mean TAS
+        # First calculate the area-weighted global mean for each year, then
+        # average over the analysis period.
         self.global_mean = {
             k: global_mean(v).mean("time_counter")
             for k, v in self.tas.items()
         }
 
-        #Global mean time series
+        # Preserve the annual global mean time series for transient temperature
+        # evolution diagnostics.
         self.tas_ts = {
             k: global_mean(v)
             for k, v in self.tas.items()
         }
 
-        #Polar amplification
+        #7. Calculate polar and global warming.
+        # Warming is defined relative to the reference experiment.
         self.polar_warming = {
             k: (
                 polar_mean(self.annual_mean[k]) 
@@ -99,7 +172,7 @@ class TASDiagnostics:
             for k in self.annual_mean
             if k!= self.reference
         }
-
+        # Global mean temperature change
         self.global_warming = {
             k: (
                 global_mean(self.annual_mean[k])
@@ -108,19 +181,31 @@ class TASDiagnostics:
             for k in self.annual_mean
             if k!= self.reference
         }
-
+        #8. Polar amplification
+        # Defined as the ratio between polar warming and global warming.
+        # Valueas greater than 1 indicate that the polar regions warm faster than
+        # the global mean.
         self.polar_amp = {
             k: self.polar_warming[k]/self.global_warming[k]
             for k in self.global_warming
         }
 
-        #Equilibrium Climate Sensitivity
+        #9. Equilibrium Climate Sensitivity.
+        # ECS is estimated from the relationship between global mean
+        # temperature and log2(CO2 concentration).
+        # The resulting slope represents the temperature response to one doubling of
+        # atmospheric CO2.
         self.ECS = calculate_ecs(
             self.global_mean, self.co2_levels
         )
 
     def _plot(self, plot_experiment=None):
-
+        """
+        Generate figures for the TAS diagnostics.
+        Some diagnostics show all experiments simultaneously, while others display a detailed
+        map or latitude-time evolution for one selected experiment.
+        """
+        # Select experiment for single-experiment diagnostics.
         # Default: plot the reference experiment
         if plot_experiment is None:
             plot_experiment = self.reference
@@ -134,7 +219,7 @@ class TASDiagnostics:
                 f"Available experiments: {list(self.atm.keys())}"
             )
 
-        # Directory for this experiment's TAS plots
+        # Create output directory for this experiment's TAS plots
         plot_dir = self.plot_dirs[exp] / "tas"
 
         plot_dir.mkdir(
@@ -211,6 +296,7 @@ class TASDiagnostics:
             save=plot_dir / "global_mean_tas.png"
         )
 
+        # Global mean TAS time series
         plot_global_timeseries(
             series=self.tas_ts,
             ylabel="Global mean TAS (°C)",

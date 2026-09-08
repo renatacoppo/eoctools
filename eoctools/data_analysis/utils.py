@@ -1417,6 +1417,7 @@ def plot_global_timeseries(
 def plot_gregory(
     tas_series,
     toa_series,
+    experiment_labels=None,
     colors=None,
     xlabel="Global mean TAS (°C)",
     ylabel="TOA net radiation (W m⁻²)",
@@ -1452,6 +1453,13 @@ def plot_gregory(
         figsize=figsize,
         dpi=dpi
     )
+
+    # Use internal experiment names if no display labels are provided
+    if experiment_labels is None:
+        experiment_labels = {
+            exp: exp
+            for exp in tas_series
+        }
 
     # Assign default Matplotlib colors if none are supplied
     if colors is None:
@@ -1522,7 +1530,7 @@ def plot_gregory(
             y,
             color=color,
             s=25,
-            label=k
+            label=experiment_labels.get(k, k)
         )
 
         # Mark the first simulation year
@@ -1590,8 +1598,9 @@ def plot_radiation_balance(
     toa,
     sfc,
     difference,
-    title,
-    save,
+    experiment_labels=None,
+    title=None,
+    save=None
 ):
     """
     Plot global TOA and surface radiation balance (SFC) time series.
@@ -1626,22 +1635,30 @@ def plot_radiation_balance(
         sharex=True,
     )
 
+    # Use internal experiment names if no display labels are provided
+    if experiment_labels is None:
+        experiment_labels = {
+            exp: exp
+            for exp in toa
+        }
+
     # Top panel: Net TOA and net SFC energy fluxes
     for exp in toa:
 
         years = toa[exp]["time_counter"].dt.year
+        label_t = experiment_labels.get(exp, exp)
 
         axes[0].plot(
             years,
             toa[exp],
-            label=f"{exp} TOA",
+            label=f"{label_t} TOA",
         )
 
         axes[0].plot(
             years,
             sfc[exp],
             linestyle="--",
-            label=f"{exp} SFC",
+            label=f"{label_t} SFC",
         )
 
     # Zerp represents radiative balance
@@ -1659,11 +1676,12 @@ def plot_radiation_balance(
     for exp in difference:
 
         years = difference[exp]["time_counter"].dt.year
+        label_b = experiment_labels.get(exp, exp)
 
         axes[1].plot(
             years,
             difference[exp],
-            label=exp,
+            label=label_b,
         )
 
     axes[1].axhline(
