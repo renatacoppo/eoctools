@@ -25,7 +25,17 @@ def extract_year(filename):
         f"Could not extract year from {filename}"
     )
 
-def process_dataset(cdo,input_folder,output_folder,filename_filter,variables,remap_method,output_prefix,exclude_filter=None,grid="r180x90"):
+def process_dataset(cdo,
+                    input_folder,
+                    output_folder,
+                    filename_filter,
+                    variables,
+                    remap_method,
+                    output_prefix,
+                    experiment_name,
+                    exclude_filter=None,
+                    grid="r180x90"
+                    ):
     """
     Select variables, calculate annual means, remap,
     concatenate all years and write one NetCDF file.
@@ -134,7 +144,7 @@ def process_dataset(cdo,input_folder,output_folder,filename_filter,variables,rem
 
     output_file = os.path.join(
         output_folder,
-        f"{output_prefix}_annual_mean_{first_year}-{last_year}.nc"
+        f"{experiment_name}_{output_prefix}_annual_mean_{first_year}-{last_year}.nc"
     )
 
     if os.path.exists(output_file):
@@ -155,8 +165,12 @@ def process_dataset(cdo,input_folder,output_folder,filename_filter,variables,rem
         f"\n Saved: {output_file}"
     )
 
-def annual_mean_moc(input_folder, output_folder,
-                    filename_filter, variables):
+def annual_mean_moc(input_folder, 
+                    output_folder,
+                    filename_filter, 
+                    variables,
+                    experiment_name
+                    ):
     """
     Compute annual means for zonal-mean diagnostics (msftyz), and save a single output file.
 
@@ -223,11 +237,9 @@ def annual_mean_moc(input_folder, output_folder,
     first_year = min(years)
     last_year = max(years)
 
-    var_string = "_".join(variables)
-
     output_file = os.path.join(
         output_folder,
-        f"moc_annual_mean_{first_year}-{last_year}.nc"
+        f"{experiment_name}_moc_annual_mean_{first_year}-{last_year}.nc"
     )
 
     final.to_netcdf(
@@ -243,7 +255,7 @@ def annual_mean_moc(input_folder, output_folder,
     print(f"\n Saved {output_file}")
 
 
-def main(config_file):
+def main(config_file, product="all"):
 
     
     config = load_yaml(config_file)
@@ -263,50 +275,56 @@ def main(config_file):
 
         print(f"\n================ {exp_name} ================\n")
 
-        # Moc
-        annual_mean_moc(
-            input_folder=os.path.join(input_base, "nemo"),
-            output_folder=os.path.join(base_output, exp_name, "processed"),
-            filename_filter=filters["moc"],
-            variables=moc_vars
-        ) 
+        # MOC
+        if product in ("moc", "all"):
+            annual_mean_moc(
+                input_folder=os.path.join(input_base, "nemo"),
+                output_folder=os.path.join(base_output, exp_name, "processed"),
+                filename_filter=filters["moc"],
+                variables=moc_vars,
+                experiment_name=exp_name
+            ) 
 
         # Atmosphere
-        process_dataset(
-            cdo=cdo,
-            input_folder=os.path.join(
-                input_base,
-                "oifs"
-            ),
-            output_folder=os.path.join(
-                base_output,
-                exp_name,
-                "processed"
-            ),
-            filename_filter=filters["atm"],
-            variables=atm_vars,
-            remap_method="remapcon",
-            output_prefix="atm",
-            exclude_filter=filters["atm_exclude"]
-        )
+        if product in ("atm", "all"):
+            process_dataset(
+                cdo=cdo,
+                input_folder=os.path.join(
+                    input_base,
+                    "oifs"
+                ),
+                output_folder=os.path.join(
+                    base_output,
+                    exp_name,
+                    "processed"
+                ),
+                filename_filter=filters["atm"],
+                variables=atm_vars,
+                remap_method="remapcon",
+                output_prefix="atm",
+                experiment_name=exp_name,
+                exclude_filter=filters["atm_exclude"]
+            )
 
         # Ocean
-        process_dataset(
-            cdo=cdo,
-            input_folder=os.path.join(
-                input_base,
-                "nemo"
-            ),
-            output_folder=os.path.join(
-                base_output,
-                exp_name,
-                "processed"
-            ),
-            filename_filter=filters["oce"],
-            variables=oce_vars,
-            remap_method="remapbil",
-            output_prefix="oce"
-        )
+        if product in ("oce", "all"):
+            process_dataset(
+                cdo=cdo,
+                input_folder=os.path.join(
+                    input_base,
+                    "nemo"
+                ),
+                output_folder=os.path.join(
+                    base_output,
+                    exp_name,
+                    "processed"
+                ),
+                filename_filter=filters["oce"],
+                variables=oce_vars,
+                remap_method="remapbil",
+                output_prefix="oce",
+                experiment_name_name=exp_name
+            )
 
 
 
@@ -320,7 +338,17 @@ if __name__ == "__main__":
         help="Path to YAML config file"
     )
 
-    args = parser.parse_args()
-    config = load_yaml(args.config)
+    parser.add_argument(
+        "-p",
+        "--product",
+        choices=["atm", "oce", "moc", "all"],
+        default="all",
+        help="Select which dataset to process: atm, oce, moc, or all (default)"
+    )
 
-    main(args.config)
+    args = parser.parse_args()
+
+    main(
+        args.config,
+        product=args.product
+        )

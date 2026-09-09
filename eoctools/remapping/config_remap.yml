@@ -6,7 +6,7 @@ experiments:
   exp3: /lus/h2resw01/scratch/itcv/ece4/exp3/output/ # input folder
 
 variables:
-  atmosphere: tas,pr,rsut,rlut,rsdt # for cdo
+  atmosphere: tas,pr,rsut,rlut,rsdt,rsns,rlns,hfss,hfls,prsn # for cdo
   ocean: tos,sos,zos,so,thetao # for cdo
   moc: ["msftyz"] # for xarray
 
