@@ -1,0 +1,206 @@
+# Paths
+base_path: "/Users/renatacoppo/epochal/data-analysis/epochal"
+
+# Number of years to load from each simulation
+nyears: 100
+
+# Reference experiment
+reference: "x3"
+
+# Plot directory
+plot_directory: "plots"
+comparison_plot_directory: "comparison_plots"
+
+# Experiments
+experiments:
+
+  #pi:
+  #  directory: "pix1"
+  #  co2: 1
+
+  #  atm: "processed/atm_annual_mean_1600-1799.nc"
+  #  oce: "processed/oce_annual_mean_1600-1799.nc"
+  #  moc: "processed/moc_annual_mean_1600-1799.nc"
+
+  #x1.1:
+  #  directory: "oix1"
+  #  co2: 1
+   #end_year: 1701 #Last complete year
+
+  #  atm: "processed/atm_annual_mean_1600-1799.nc"
+  #  oce: "processed/oce_annual_mean_1600-1799.nc"
+  #  moc: "processed/moc_annual_mean_1600-1799.nc"
+
+  #x1.2:
+  #  directory: "eex1"
+  #  co2: 1
+   #end_year: 1701 #Last complete year
+
+  #  atm: "processed/atm_annual_mean_1600-1649.nc"
+  #  oce: "processed/oce_annual_mean_1600-1649.nc"
+  #  moc: "processed/moc_annual_mean_1600-1649.nc"
+
+  #x1.3:
+  #  directory: "tex1"
+  #  co2: 1
+   #end_year: 1701 #Last complete year
+
+  #  atm: "processed/atm_annual_mean_1600-1650.nc"
+  #  oce: "processed/oce_annual_mean_1600-1650.nc"
+  #  moc: "processed/moc_annual_mean_1600-1650.nc"
+
+  #x1.4:
+  #  directory: "xex1"
+  #  co2: 1
+   #end_year: 1701 #Last complete year
+
+  #  atm: "processed/atm_annual_mean_1600-1661.nc"
+  #  oce: "processed/oce_annual_mean_1600-1661.nc"
+  #  moc: "processed/moc_annual_mean_1600-1661.nc"
+
+  #x1:
+  #  directory: "pex1"
+  #  co2: 1
+    
+  #  atm: "processed/atm_annual_mean_1600-1799.nc"
+  #  oce: "processed/oce_annual_mean_1600-1799.nc"
+  #  moc: "processed/moc_annual_mean_1600-1799.nc"
+
+  # Optional experiments
+  x3:
+    directory: "nex3"
+    co2: 3
+
+    end_year: 1805 #Last complete year
+    atm: "processed/atm_annual_mean_1600-2099.nc"
+    oce: "processed/oce_annual_mean_1600-2099.nc"
+    moc: "processed/moc_annual_mean_1600-2099.nc"
+
+  x3.1:
+    directory: "wex1"
+    co2: 3
+
+    end_year: 1805 #Last complete year
+    atm: "processed/atm_annual_mean_1600-1649.nc"
+    oce: "processed/oce_annual_mean_1600-1649.nc"
+    moc: "processed/moc_annual_mean_1600-1649.nc"
+
+  x3.2:
+    directory: "wex3"
+    co2: 3
+
+    end_year: 1805 #Last complete year
+    atm: "processed/atm_annual_mean_1600-1650.nc"
+    oce: "processed/oce_annual_mean_1600-1650.nc"
+    moc: "processed/moc_annual_mean_1600-1650.nc"
+
+  #x6:
+  #  directory: "pex6"
+  #  co2: 6
+  #  end_year: 1701 #Last complete year
+
+  #  atm: "processed/atm_annual_mean_1600-1702.nc"
+  #  oce: "processed/oce_annual_mean_1600-1702.nc"
+  #  moc: "processed/moc_annual_mean_1600-1702.nc"
+
+
+deepmip:
+
+    CESM:
+      tas:
+        pi: "DeepMIP/CESM1.2_CAM5-piControl-tas-v1.0.mean_um_2020-11-19.nc"
+        1x: "DeepMIP/CESM1.2_CAM5-deepmip_sens_1xCO2-tas-v1.0.mean_um_2020-11-19.nc"
+        3x: "DeepMIP/CESM1.2_CAM5-deepmip_stand_3xCO2-tas-v1.0.mean_um_2020-11-19.nc"
+        6x: "DeepMIP/CESM1.2_CAM5-deepmip_stand_6xCO2-tas-v1.0.mean_um_2020-11-19.nc"
+        9x: "DeepMIP/CESM1.2_CAM5-deepmip_sens_9xCO2-tas-v1.0.mean_um_2020-11-19.nc"
+
+      sst:
+        pi:  "DeepMIP/CESM1.2_CAM5-piControl-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+        1x:  "DeepMIP/CESM1.2_CAM5-deepmip_sens_1xCO2-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+        3x:  "DeepMIP/CESM1.2_CAM5-deepmip_stand_3xCO2-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+        6x:  "DeepMIP/CESM1.2_CAM5-deepmip_stand_6xCO2-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+        9x:  "DeepMIP/CESM1.2_CAM5-deepmip_sens_9xCO2-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+
+    COSMOS:
+      tas:
+        pi: "DeepMIP/COSMOS-landveg_r2413-piControl-tas-v1.0.mean_um_2020-11-19.nc"
+        1x: "DeepMIP/COSMOS-landveg_r2413-deepmip_sens_1xCO2-tas-v1.0.mean_um_2020-11-19.nc"
+        3x: "DeepMIP/COSMOS-landveg_r2413-deepmip_stand_3xCO2-tas-v1.0.mean_um_2020-11-19.nc"
+        4x: "DeepMIP/COSMOS-landveg_r2413-deepmip_sens_4xCO2-tas-v1.0.mean_um_2020-11-19.nc"
+
+      sst:
+        pi:  "DeepMIP/COSMOS-landveg_r2413-piControl-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+        1x:  "DeepMIP/COSMOS-landveg_r2413-deepmip_sens_1xCO2-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+        3x:  "DeepMIP/COSMOS-landveg_r2413-deepmip_stand_3xCO2-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+        4x:  "DeepMIP/COSMOS-landveg_r2413-deepmip_sens_4xCO2-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+
+
+    GFDL:
+      tas:
+        pi: "DeepMIP/GFDL_CM2.1-piControl-tas-v1.0.mean_um_2020-11-19.nc"
+        1x: "DeepMIP/GFDL_CM2.1-deepmip_sens_1xCO2-tas-v1.0.mean_um_2020-11-19.nc"
+        2x: "DeepMIP/GFDL_CM2.1-deepmip_sens_2xCO2-tas-v1.0.mean_um_2020-11-19.nc"
+        3x: "DeepMIP/GFDL_CM2.1-deepmip_stand_3xCO2-tas-v1.0.mean_um_2020-11-19.nc"
+        4x: "DeepMIP/GFDL_CM2.1-deepmip_sens_4xCO2-tas-v1.0.mean_um_2020-11-19.nc"
+        6x: "DeepMIP/GFDL_CM2.1-deepmip_stand_6xCO2-tas-v1.0.mean_um_2020-11-19.nc"
+
+      sst:
+        pi:  "DeepMIP/GFDL_CM2.1-piControl-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+        1x:  "DeepMIP/GFDL_CM2.1-deepmip_sens_1xCO2-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+        2x:  "DeepMIP/GFDL_CM2.1-deepmip_sens_2xCO2-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+        3x:  "DeepMIP/GFDL_CM2.1-deepmip_stand_3xCO2-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+        4x:  "DeepMIP/GFDL_CM2.1-deepmip_sens_4xCO2-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+        6x:  "DeepMIP/GFDL_CM2.1-deepmip_stand_6xCO2-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+
+    HadCM:
+      tas:
+        pi: "DeepMIP/HadCM3B_M2.1aN-piControl-tas-v1.0.mean_um_2020-11-19.nc"
+        1x: "DeepMIP/HadCM3B_M2.1aN-deepmip_sens_1xCO2-tas-v1.0.mean_um_2020-11-19.nc"
+        2x: "DeepMIP/HadCM3B_M2.1aN-deepmip_sens_2xCO2-tas-v1.0.mean_um_2020-11-19.nc"
+        3x: "DeepMIP/HadCM3B_M2.1aN-deepmip_stand_3xCO2-tas-v1.0.mean_um_2020-11-19.nc"
+
+      sst:
+        pi: "DeepMIP/HadCM3B_M2.1aN-piControl-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+        1x: "DeepMIP/HadCM3B_M2.1aN-deepmip_sens_1xCO2-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+        2x: "DeepMIP/HadCM3B_M2.1aN-deepmip_sens_2xCO2-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+        3x: "DeepMIP/HadCM3B_M2.1aN-deepmip_stand_3xCO2-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+
+    INM:
+      tas:
+        pi: "DeepMIP/INM-CM4-8-piControl-tas-v1.0.mean_um_2020-11-19.nc"
+        6x: "DeepMIP/INM-CM4-8-deepmip_stand_6xCO2-tas-v1.0.mean_um_2020-11-19.nc"
+
+      sst:
+        pi: "DeepMIP/INM-CM4-8-piControl-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+        6x: "DeepMIP/INM-CM4-8-deepmip_stand_6xCO2-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+
+    IPSL:
+      tas:
+        pi: "DeepMIP/IPSLCM5A2-piControl-tas-v1.0.mean_um_2020-11-19.nc"
+        1.5x: "DeepMIP/IPSLCM5A2-deepmip_sens_1.5xCO2-tas-v1.0.mean_um_2020-11-19.nc"
+        3x: "DeepMIP/IPSLCM5A2-deepmip_stand_3xCO2-tas-v1.0.mean_um_2020-11-19.nc"
+
+      sst:
+        pi: "DeepMIP/IPSLCM5A2-piControl-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+        1.5x: "DeepMIP/IPSLCM5A2-deepmip_sens_1.5xCO2-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+        3x: "DeepMIP/IPSLCM5A2-deepmip_stand_3xCO2-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+
+    MIROC:
+      tas:
+        pi: "DeepMIP/MIROC4m-piControl-tas-v1.0.mean_um_2020-11-19.nc"
+        3x: "DeepMIP/MIROC4m-deepmip_stand_3xCO2-tas-v1.0.mean_um_2020-11-19.nc"
+
+      sst:
+        pi: "DeepMIP/MIROC4m-piControl-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+        3x: "DeepMIP/MIROC4m-deepmip_stand_3xCO2-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+
+    NorESM:
+      tas:
+        pi: "DeepMIP/NorESM1_F-piControl-tas-v1.0.mean_um_2020-11-19.nc"
+        2x: "DeepMIP/NorESM1_F-deepmip_sens_2xCO2-tas-v1.0.mean_um_2020-11-19.nc"
+        4x: "DeepMIP/NorESM1_F-deepmip_sens_4xCO2-tas-v1.0.mean_um_2020-11-19.nc"
+
+      sst:
+        pi: "DeepMIP/NorESM1_F-piControl-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+        2x: "DeepMIP/NorESM1_F-deepmip_sens_2xCO2-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
+        4x: "DeepMIP/NorESM1_F-deepmip_sens_4xCO2-tos-v1.0.mean_um_sst_nn_2020-11-19.nc"
