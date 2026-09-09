@@ -1419,6 +1419,7 @@ def plot_gregory(
     toa_series,
     experiment_labels=None,
     colors=None,
+    f_years=None,
     xlabel="Global mean TAS (°C)",
     ylabel="TOA net radiation (W m⁻²)",
     title="Gregory plots",
@@ -1470,10 +1471,22 @@ def plot_gregory(
             for i, exp in enumerate(tas_series)
         }
 
+    # Loop over the experiments
     for k in tas_series:
 
         tas = tas_series[k]
         toa = toa_series[k]
+
+        # Restrict the analysis to the first N years if requested
+        if f_years is not None:
+
+            tas = tas.isel(
+                time_counter=slice(0, f_years)
+            )
+
+            toa = toa.isel(
+                time_counter=slice(0, f_years)
+            )
 
         # Convert directly to numpy arrays
         x = tas.values
@@ -1702,7 +1715,12 @@ def plot_radiation_balance(
     axes[1].legend()
 
     plt.tight_layout()
-    plt.savefig(save, dpi=300)
+
+    if save is not None:
+        plt.savefig(
+            save, 
+            dpi=300,
+            bbox_inches="tight"),
     plt.show()
     plt.close()
 
