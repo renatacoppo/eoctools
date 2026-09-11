@@ -19,7 +19,15 @@ class TOADiagnostics:
     comparison_plot_dir : pathlib.Path
         Base directory used to store plots comparing multiple experiments.
     """
-    def __init__(self, atm, reference, plot_dirs, comparison_plot_dir, experiment_labels):
+    def __init__(self, 
+                 atm, 
+                 reference, 
+                 plot_dirs, 
+                 comparison_plot_dir, 
+                 experiment_labels, 
+                 colors, 
+                 skip_years=0,
+                 warm_fix_activations=None):
         """
         Initialize the TOA diagnostics container.
         The input datasets and plotting configuration are stored, while
@@ -32,16 +40,23 @@ class TOADiagnostics:
         self.reference = reference
         self.plot_dirs = plot_dirs
         self.comparison_plot_dir = comparison_plot_dir
+        self.colors = colors
+        self.skip_years = skip_years
+        self.warm_fix_activations = (
+            warm_fix_activations
+            if warm_fix_activations is not None
+            else {}
+        )
 
         # Original experiment names used in figures and legends
         self.experiment_labels = experiment_labels
 
         # Diagnostic data containers
         # Annual global mean surface air temperature time series (°C)
-        self.toa = {}
+        self.tas = {}
 
         # Annual global mean net TOA radiation time series (W m-2)
-        self.tas = {}
+        self.toa = {}
 
         # Annual global mean net surface energy flux time series (W m-2)
         self.sfc = {}
@@ -49,7 +64,13 @@ class TOADiagnostics:
         # Difference between net TOA and net surface radiation (W m-2)
         self.toa_sfc_difference = {}
 
-    def run(self, f_years=None, plot=True, save=True, plot_experiment=None):
+    def run(self, 
+            f_years=None, 
+            skip_years=None, 
+            moving_mean=None,
+            plot=True, 
+            save=True, 
+            plot_experiment=None):
         """
         Run all TOA and surface energy diagnostics.
         The method first calculates global mean temperature and radiation time series
@@ -75,18 +96,23 @@ class TOADiagnostics:
             The diagnostics object containing all calculated results.
         """
 
+        if skip_years is None:
+            skip_years = self.skip_years
+        
         # Calculate all temperature and radiation diagnostics
-        self._calculate(f_years=f_years)
+        self._calculate(skip_years=skip_years)
         
         # Generate figures if requested
         if plot:
             self._plot(f_years=f_years,
+                       skip_years=skip_years,
+                       moving_mean=moving_mean,
                        save=save,
                        plot_experiment=plot_experiment)
 
         return self
     
-    def _calculate(self, f_years=None):
+    def _calculate(self, f_years=None, skip_years=0):
         """
         Calculate global mean temperature and energy-budget diagnostics.
         
@@ -95,14 +121,15 @@ class TOADiagnostics:
             Number of simulation years to include from the beginning of each
             experiment. If None, all available years are used.
         """
+        
         # Select the requested number of years from each simulation
-        if f_years is None:
-            atm = self.atm
-        else:
-            atm = {
-                exp: ds.isel(time_counter=slice(0, f_years))
-                for exp, ds in self.atm.items()
-            }
+
+        atm = {
+            exp: ds.isel(
+                time_counter=slice(skip_years, None)
+            )
+            for exp, ds in self.atm.items()
+        }
 
         # Store the selected datasets if useful for inspection
         self.atm_selected = atm
@@ -111,21 +138,21 @@ class TOADiagnostics:
         # TAS is converted from Kelvin to degrees Celsius before calculating the latitude-area-weighted global mean.
         self.tas = {
             k: global_mean(ds["tas"] - 273.15)
-            for k, ds in self.atm.items()
+            for k, ds in atm.items()
         }
         
         # Net top-of-the-atmosphere radiation
         # Positive values indicate a net gain of energy by the climate system
         self.toa = {
             k: global_toa_ts(ds)
-            for k, ds in self.atm.items()
+            for k, ds in atm.items()
         }
 
         # Net surface energy flux
         # Positive values indicate a net downward energy flux into the surface
         self.sfc = {
             k: global_surface_net_radiation(ds)
-            for k, ds in self.atm.items()
+            for k, ds in atm.items()
         }
 
         # TOA - SFC radiation imbalance
@@ -133,10 +160,15 @@ class TOADiagnostics:
         # top of the atmosphere and the net energy flux at the surface.
         self.toa_sfc_difference = {
             k: self.toa[k] - self.sfc[k]
-            for k in self.atm
+            for k in atm
         }
 
-    def _plot(self, f_years=None, save=True, plot_experiment=None):
+    def _plot(self, 
+              f_years=None, 
+              skip_years=0, 
+              moving_mean=None,
+              save=True, 
+              plot_experiment=None):
         """
         Generate TOA and surface energy-budget diagnostic plots.
         
@@ -189,9 +221,19 @@ class TOADiagnostics:
         experiment_string = "_".join(experiment_dirs)
 
         if f_years is None:
-            years_string = "all_years"
+            years_string = f"after_skip_{skip_years}"
+            period_title = (
+                f"after first {skip_years} years"
+                if skip_years > 0
+                else "all years"
+            )
         else:
-            years_string = f"first_{f_years}_years"
+            years_string = (
+                f"after_skip{skip_years}_first_{f_years}_years"
+            )
+            period_title = (
+                f"first {f_years} years after skipping the first {skip_years} years"
+            )
 
         # Gregory plot for all experiments (the years plotted depend on the years loaded on atm)
         save_gregory = (
@@ -207,6 +249,7 @@ class TOADiagnostics:
             tas_series=self.tas,
             toa_series=self.toa,
             experiment_labels=self.experiment_labels,
+            colors=self.colors,
             f_years=f_years,
             title=f"Gregory plots – first {f_years} years"
                 if f_years is not None
@@ -217,15 +260,17 @@ class TOADiagnostics:
         # TOA - SFC radiation balance
         save_balance = (
             plot_dir
-            / f"toa_sfc_radiations_{years_string}_{experiment_string}.png"
+            / f"toa_sfc_enerfgy_flux_{years_string}_{experiment_string}.png"
         )
 
         # Compare net TOA radiation and net surface energy flux through time toghether with their difference.
         plot_radiation_balance(
-            toa=self.toa,
-            sfc=self.sfc,
             difference=self.toa_sfc_difference,
             experiment_labels=self.experiment_labels,
+            f_years=f_years,
+            moving_mean=moving_mean,
+            colors=self.colors,
+            warm_fix_activations=self.warm_fix_activations,
             title="TOA - SFC radiation balance",
             save=save_balance if save else None
         )

@@ -69,7 +69,6 @@ def load_last_years(
 
 def load_simulation(
     file_path,
-    skip_years=10,
     time_dim="time_counter",
     end_year=None,
 ):
@@ -81,8 +80,6 @@ def load_simulation(
     Parameters
     file_path : str ot Path
             Path to the NetCDF dataset
-    skip_years : int, default=10
-            Number of initial simulations years to discard
     time_dim : str, default="time_counter"
             Name of the time coordinate.
     end_year : int, optional
@@ -104,7 +101,7 @@ def load_simulation(
     if end_year is None:
         end_year = last_available_year
 
-    first_year = first_available_year + skip_years
+    first_year = first_available_year
 
     ds = ds.sel(
         {
@@ -497,6 +494,7 @@ def global_surface_net_radiation(ds):
         + ds["rlns"]
         - ds["hfss"]
         - ds["hfls"]
+        - ds["prsn"]*33400
     )
 
     # Calculate latitude-based area weights
@@ -511,6 +509,37 @@ def global_surface_net_radiation(ds):
     )
 
     return net_sfc_gm
+
+def count_warm_fix_activations(log_file):
+        """
+    Count the number of times the ECE paleo warm fix was activated.
+
+    Parameters
+    ----------
+    log_file : str or pathlib.Path
+        Path to the simulation log file.
+
+    Returns
+    -------
+    int
+        Number of warm-fix activations.
+    """
+        if log_file is None:
+            return 0
+        
+        log_file= Path(log_file)
+
+        if not log_file.exists():
+            raise FileNotFoundError(
+                f"Warm-fix log file not found: {log_file}"
+            )
+        
+        pattern = "ECE_PALEO_WARM_FIX: ACTIVATED! RESETTING"
+
+        with log_file.open("r", errors="ignore") as f:
+            count = sum(pattern in line for line in f)
+
+        return count
 
 ### -------------------------- ###
 ###     Plotting functions     ###
@@ -1608,19 +1637,22 @@ def plot_gregory(
 
 
 def plot_radiation_balance(
-    toa,
-    sfc,
     difference,
     experiment_labels=None,
+    colors=None,
+    f_years=None,
+    warm_fix_activations=None,
+    moving_mean=None,
     title=None,
     save=None
 ):
     """
-    Plot global TOA and surface radiation balance (SFC) time series.
+    Plot the distribution and time evolution of the TOA-SFC net energy flux difference.
 
     The figure contains two panels:
         Top:
-            Net TOA radiation and net surface radiation
+            Boxplots showing the distribution of annual global mean
+            TOA-SFC net energy flux for each experiment.
         Bottom:
             Difference between TOA and surface net radiation
 
@@ -1645,58 +1677,155 @@ def plot_radiation_balance(
         2,
         1,
         figsize=(10, 8),
-        sharex=True,
+        sharex=False,
     )
 
+    # Experiment labels and colors
+    experiments = list(difference.keys())
+    
     # Use internal experiment names if no display labels are provided
     if experiment_labels is None:
         experiment_labels = {
             exp: exp
-            for exp in toa
+            for exp in difference
         }
 
-    # Top panel: Net TOA and net SFC energy fluxes
-    for exp in toa:
+    # Use Matplotlib's default color cycle if no colors are provided
+    if colors is None:
+        color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
-        years = toa[exp]["time_counter"].dt.year
-        label_t = experiment_labels.get(exp, exp)
+        colors = {
+            exp: color_cycle[i % len(color_cycle)]
+            for i, exp in enumerate(experiments)
+        }
 
-        axes[0].plot(
-            years,
-            toa[exp],
-            label=f"{label_t} TOA",
+        # ==========================================================
+    # Top panel: distributions of TOA and surface radiation
+    # ==========================================================
+
+    difference_data = []
+    labels = []
+
+    for exp in experiments:
+
+        # Convert to numpy arrays and remove NaNs
+        values = difference[exp]
+
+        # Boxplots use only the requested f_years
+        if f_years is not None:
+            values = values.isel(
+                time_counter=slice(0,f_years)
+            )
+
+        values = values.values
+        values = values[np.isfinite(values)]
+
+        difference_data.append(values)
+
+        label = experiment_labels.get(exp, exp)
+
+        if warm_fix_activations is None:
+            warm_fix_activations = {}
+
+        warm_fix_count = warm_fix_activations.get(exp)
+
+        if warm_fix_count is not None:
+            label = f"{label}\nWarm fix: {warm_fix_count}"
+
+        labels.append(label)
+
+    #Create one boxplot for each experiment so that each experiment can have its own color
+    for i, (exp, values) in enumerate(
+        zip(experiments, difference_data),
+        start=1
+    ):
+    
+        axes[0].boxplot(
+            [values],
+            positions=[i],
+            widths=0.6,
+            patch_artist=True,
+            boxprops=dict(facecolor=colors[exp], alpha=0.7),
+            medianprops=dict(color="black", linewidth=1.5),
+            whiskerprops=dict(color=colors[exp]),
+            capprops=dict(color=colors[exp]),
+            flierprops=dict(
+                marker="o",
+                markerfacecolor=colors[exp],
+                markeredgecolor=colors[exp],
+                markersize=4,
+                alpha=0.6
+            )
         )
 
-        axes[0].plot(
-            years,
-            sfc[exp],
-            linestyle="--",
-            label=f"{label_t} SFC",
-        )
-
-    # Zerp represents radiative balance
+    # Zero represents radiative balance
     axes[0].axhline(
         0,
         linestyle=":",
         linewidth=1,
     )
 
-    axes[0].set_ylabel("Net radiation (W m$^{-2}$)")
-    axes[0].set_title("Net TOA and net SFC radiation")
-    axes[0].legend()
+    axes[0].set_ylabel(
+        "Net radiation (W m$^{-2}$)"
+    )
+
+    axes[0].set_title(
+        "Distribution of TOA-SFC net energy flux"
+    )
+
+    # Experiment labels centered between the two boxes
+    axes[0].set_xticks(
+        np.arange(1, len(experiments)+1)
+    )
+
+    axes[0].set_xticklabels(labels)
+
+    axes[0].grid(
+        True,
+        linestyle="--",
+        alpha=0.4,
+        axis="y"
+    )
 
     # Bottom panel: TOA minus surface radiation
-    for exp in difference:
+    for exp in experiments:
 
         years = difference[exp]["time_counter"].dt.year
         label_b = experiment_labels.get(exp, exp)
 
+        # Original annual time series
         axes[1].plot(
             years,
             difference[exp],
+            color=colors[exp],
+            alpha=0.4,
+            linewidth=1,
             label=label_b,
         )
 
+        # Moving mean
+        if moving_mean is not None:
+            moving_mean_data = (
+                difference[exp]
+                .rolling(
+                    time_counter=moving_mean,
+                    center=True
+                )
+                .mean()
+            )
+
+            axes[1].plot(
+                years,
+                moving_mean_data,
+                color=colors[exp],
+                linewidth=2.5,
+                label=(
+                    f"{experiment_labels.get(exp,exp)} "
+                    f"({moving_mean}-yr moving mean)"
+                )
+            )
+
+    # Zero represents no TOA-SFC difference
     axes[1].axhline(
         0,
         linestyle=":",
@@ -1709,11 +1838,22 @@ def plot_radiation_balance(
 
     axes[1].set_xlabel("Year")
     axes[1].set_title(
-        "TOA − SFC radiation imbalance"
+        "TOA − SFC net energy flux"
     )
 
     axes[1].legend()
 
+    axes[1].grid(
+        True,
+        linestyle="--",
+        alpha=0.4,
+        axis="y"
+    )
+
+    # Figure title and layout
+    if title is not None:
+        fig.suptitle(title)
+    
     plt.tight_layout()
 
     if save is not None:
