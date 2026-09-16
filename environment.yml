@@ -15,6 +15,7 @@ dependencies:
   - pandas
   - cdo
   - pip
+  - nc-time-axis
 
   # Configuration
   - pyyaml

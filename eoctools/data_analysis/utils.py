@@ -1699,7 +1699,7 @@ def plot_radiation_balance(
             for i, exp in enumerate(experiments)
         }
 
-        # ==========================================================
+    # ==========================================================
     # Top panel: distributions of TOA and surface radiation
     # ==========================================================
 
@@ -2334,3 +2334,220 @@ DEEP_MIP_MODEL_STYLES = {
     "EC-EARTH4": {"color": "green",     "marker": "X"},
 }
 
+#==============================#
+# -------- MOC plots ----------#
+#==============================#
+
+def plot_moc_mean(
+    amoc_mean,
+    experiment=None,
+    experiment_label=None,
+    levels=None,
+    title=None,
+    save_path=None,
+):
+    """
+    Plot the time-mean Atlantic meridional overturning circulation.
+
+    Parameters
+    ----------
+    amoc_mean : xarray.DataArray
+        Time-mean MOC streamfunction.
+
+    experiment : str, optional
+        Internal experiment name.
+
+    experiment_label : str, optional
+        User-facing experiment label for the title.
+
+    plot_dir : str or pathlib.Path, optional
+        Directory in which to save the figure.
+
+    basin : int, optional
+        Basin index used for the Atlantic basin.
+
+    levels : array-like, optional
+        Contour levels. If ``None``, defaults to
+        ``np.arange(-17, 17, 2)``.
+
+    title : str, optional
+        Custom plot title.
+
+    save : bool, optional
+        Whether to save the figure.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The generated figure.
+    """
+
+    if levels is None:
+        levels = np.arange(-17, 17, 2)
+
+    if experiment_label is None:
+        experiment_label = experiment
+
+    fig, ax = plt.subplots(
+        figsize=(7, 5)
+    )
+
+    amoc_mean.plot.contourf(
+        ax=ax,
+        x="nav_lat",
+        y="depthw",
+        levels=levels,
+        cmap="RdBu_r",
+        add_colorbar=True,
+        cbar_kwargs={
+            "label": "MOC (Sv)"
+        },
+    )
+
+    ax.set_ylim(3000, 0)
+    ax.set_xlabel("Latitude (°N)")
+    ax.set_ylabel("Depth (m)")
+
+    ax.set_title(title)
+
+    fig.tight_layout()
+
+    if save_path is not None:
+        plt.savefig(
+            save_path,
+            dpi=300,
+            bbox_inches="tight",
+        )
+
+    plt.show()
+    plt.close()
+
+def plot_moc_timeseries(
+    amoc_timeseries,
+    colors=None,
+    experiment_labels=None,
+    plot_dir=None,
+    moving_mean=None,
+    ylim=None,
+    title=None,
+    save_path=None,
+):
+    """
+    Plot the AMOC maximum time series.
+
+    Parameters
+    ----------
+    amoc_timeseries : xarray.DataArray
+        Annual AMOC maximum.
+
+    experiment : str, optional
+        Internal experiment name.
+
+    experiment_label : str, optional
+        User-facing experiment label for the title.
+
+    plot_dir : str or pathlib.Path, optional
+        Directory in which to save the figure.
+
+    moving_mean : int, optional
+        Width of a centered moving mean in years. If ``None``, no
+        moving mean is plotted.
+
+    ylim : tuple, optional
+        Y-axis limits.
+
+    title : str, optional
+        Custom plot title.
+
+    save : bool, optional
+        Whether to save the figure.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The generated figure.
+    """
+
+    if colors is None:
+        colors = {}
+
+    if experiment_labels is None:
+        experiment_labels = {}
+
+    fig, ax = plt.subplots(
+        figsize=(9, 5)
+    )
+
+    # Plot each experiment
+    for exp, data in amoc_timeseries.items():
+
+        color=colors.get(exp, None)
+        label=experiment_labels.get(exp,exp)
+
+    # ----------------------------------------------------------
+    # Annual AMOC
+    # ----------------------------------------------------------
+
+        data.plot(
+            ax=ax,
+            color=color,
+            linewidth=1.0,
+            alpha=0.5,
+            label=f"{label} annual",
+        )
+
+    # ----------------------------------------------------------
+    # Moving mean
+    # ----------------------------------------------------------
+
+        if moving_mean is not None:
+
+            amoc_smooth = (
+                data
+                .rolling(
+                    time_counter=moving_mean,
+                    center=True,
+                )
+                .mean()
+            )
+
+            amoc_smooth.plot(
+                ax=ax,
+                color=color,
+                linewidth=2.0,
+                label=f"{label} ({moving_mean}-year mean)",
+            )
+
+    # ----------------------------------------------------------
+    # Formatting
+    # ----------------------------------------------------------
+
+
+    ax.set_xlabel("Year")
+    ax.set_ylabel("AMOC maximum (Sv)")
+
+    if ylim is not None:
+        ax.set_ylim(*ylim)
+
+    ax.set_title(title)
+
+    ax.legend(
+        frameon=False,
+        ncol=1
+    )
+
+    fig.tight_layout()
+
+    # ----------------------------------------------------------
+    # Save
+    # ----------------------------------------------------------
+
+    if save_path is not None:
+        plt.savefig(
+            save_path,
+            dpi=300,
+            bbox_inches="tight",
+        )
+
+    plt.show()
+    plt.close()

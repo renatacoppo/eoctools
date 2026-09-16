@@ -29,7 +29,8 @@ dependencies = [
     "netcdf4",
     "cartopy",
     "dask",
-    "cmocean"
+    "cmocean", 
+    "nc-time-axis"
 ]
 
 [project.urls]

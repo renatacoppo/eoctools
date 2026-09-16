@@ -79,13 +79,15 @@ class TASDiagnostics:
         # Equilibrium climate sensitivity
         self.ECS = None
 
-    def run(self, plot=True, plot_experiment=None):
+    def run(self, compute_ecs=False, plot=True, plot_experiment=None):
         """
         Run all TAS diagnostics.
         The method first calculates all temperature diagnostics and then, optionally, generates the corresponding figures.
         """
         # Calculate all TAS diagnostics
-        self._calculate()
+        self._calculate(
+            compute_ecs=compute_ecs
+        )
         
         # Generate figures if requested
         if plot:
@@ -93,7 +95,7 @@ class TASDiagnostics:
 
         return self
     
-    def _calculate(self):
+    def _calculate(self, compute_ecs=False):
         """
         Calculate all surface air temperature diagnostics.
         The calculations are performed in the following order:
@@ -195,9 +197,12 @@ class TASDiagnostics:
         # temperature and log2(CO2 concentration).
         # The resulting slope represents the temperature response to one doubling of
         # atmospheric CO2.
-        self.ECS = calculate_ecs(
-            self.global_mean, self.co2_levels
-        )
+        if compute_ecs:
+            self.ECS = calculate_ecs(
+                self.global_mean, self.co2_levels
+            )
+        else:
+            self.ECS = None
 
     def _plot(self, plot_experiment=None):
         """

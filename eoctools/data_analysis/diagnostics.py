@@ -9,6 +9,7 @@ from toa import TOADiagnostics
 from sst import SSTDiagnostics
 from sos import SOSDiagnostics
 from deepmip import DeepMIPDiagnostics
+from amoc import AMOCDiagnostics
 from utils import load_last_years, load_simulation, count_warm_fix_activations
 
 
@@ -112,6 +113,7 @@ class Diagnostics():
             self.atm_full = {}
             self.oce = {}
             self.moc = {}
+            self.moc_full = {}
 
             #Load model data
             #----------------
@@ -182,6 +184,18 @@ class Diagnostics():
                  experiment_dirs=self.experiment_dirs
             )
 
+            # MOC diagnostics
+            self.moc = AMOCDiagnostics(
+                  moc=self.moc,
+                  moc_full=self.moc_full,
+                  reference=self.reference,
+                  plot_dirs=self.plot_dirs,
+                  comparison_plot_dir=self.comparison_plot_dir,
+                  skip_years=self.skip_years,
+                  colors=self.colors,
+                  experiment_labels=self.experiment_labels
+            )
+
             #self.zos = {}
             #self.so = {}
             #self.thetao = {}
@@ -240,8 +254,17 @@ class Diagnostics():
                 # MOC data
                   if "moc" in info:
                        
+                       file_path=directory / info["moc"]
+                       
                        # Load only the last N years: used by diagnostics representing the equilibrated state
                        self.moc[exp] = load_last_years(directory / info["moc"], nyears=self.nyears, end_year=end_year)
+
+                      # Load the complete simulation after removing the initial 10-year spin-up period.
+                      # It can be used for diagnostics that depend on the temporal evolution of the simulation (e.g., TOA/Gregory plots)
+                       self.moc_full[exp] = load_simulation(
+                            file_path,
+                            end_year=end_year
+                       )
 
      # Experiment metadata
      #--------------------
