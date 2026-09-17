@@ -2,8 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from utils import (
+    global_mean,
     plot_moc_mean,
     plot_moc_timeseries,
+    plot_amoc_gregory
 )
 
 class AMOCDiagnostics:
@@ -27,6 +29,7 @@ class AMOCDiagnostics:
         self,
         moc,
         moc_full,
+        atm,
         reference,
         plot_dirs,
         comparison_plot_dir,
@@ -40,12 +43,18 @@ class AMOCDiagnostics:
 
         self.moc = moc
         self.moc_full = moc_full
+        self.atm = atm
+
         self.reference = reference
         self.plot_dirs = plot_dirs
         self.comparison_plot_dir = comparison_plot_dir
         self.skip_years = skip_years
+
         self.colors = colors or {}
         self.experiment_labels = experiment_labels or {}
+
+        # Annual global mean surface air temperature
+        self.tas = {}
 
     # ==============================================================
     # Main interface
@@ -58,6 +67,7 @@ class AMOCDiagnostics:
         depth_range=(500, 2000),
         basin=1,
         moving_mean=None,
+        f_years=None,
         plot=True,
         save=True,
     ):
@@ -90,6 +100,10 @@ class AMOCDiagnostics:
         dict
             Dictionary containing calculated AMOC diagnostics.
         """
+
+        # Calculate TAS using the same spin-up selection
+        # as the AMOC time series.
+        self._calculate_tas()
 
         results = {}
 
@@ -129,6 +143,7 @@ class AMOCDiagnostics:
 
             self._plot(
                 results,
+                f_years=f_years,
                 moving_mean=moving_mean,
                 save=save,
             )
@@ -227,11 +242,41 @@ class AMOCDiagnostics:
             time_counter="YS"
         ).mean()
 
+        # Reduce all spatial dimensions
+        spatial_dims = [
+            dim for dim in amoc.dims
+            if dim != "time_counter"
+        ]
+
         amoc_max = amoc.max(
-            dim=["depthw", "y"]
-        )
+            dim=spatial_dims,
+            skipna=True
+        ). squeeze()
 
         return amoc_max
+    
+    def _calculate_tas(self):
+        """
+        Calculate annual global mean surface air temperature.
+
+        The same initial years removed from the AMOC time series are
+        removed here to ensure that TAS and AMOC represent the same
+        simulation years.
+        """
+
+        atm = {
+            exp: ds.isel(
+                time_counter=slice(self.skip_years, None)
+            )
+            for exp, ds in self.atm.items()
+        }
+
+        self.tas = {
+            exp: global_mean(
+                ds["tas"] - 273.15
+            )
+            for exp, ds in atm.items()
+        }
 
     # ==============================================================
     # Plotting
@@ -240,6 +285,7 @@ class AMOCDiagnostics:
     def _plot(
         self,
         results,
+        f_years=None,
         moving_mean=None,
         save=True,
     ):
@@ -264,7 +310,6 @@ class AMOCDiagnostics:
             )
 
 
-
         # Create filename from experiment directories
         # The experiment directory names are included so that comparison figures remain identifiable when multiple simulation 
         # sets are analysed
@@ -280,7 +325,6 @@ class AMOCDiagnostics:
             years_string = f"after_skip{self.skip_years}"
         else:
             years_string = "all_years"
-    
         
         # AMOC mean plots for every experiment
         for exp, data in results.items():
@@ -331,4 +375,32 @@ class AMOCDiagnostics:
             moving_mean=moving_mean,
             title=f"Annual maximum AMOC strength",
             save_path=save_moc_timeseries if save else None
+        )
+
+        # AMOC-TAS Gregory plot
+        tas_series = {
+        exp: self.tas[exp]
+        for exp in results
+        }
+
+        if save:
+            save_amoc_gregory = (
+                plot_dir
+                / f"amoc_tas_gregory_{years_string}_{experiment_string}.png"
+            )
+        else:
+            save_amoc_gregory = None
+
+        plot_amoc_gregory(
+            tas_series=tas_series,
+            amoc_series=amoc_timeseries,
+            experiment_labels=self.experiment_labels,
+            colors=self.colors,
+            f_years=f_years,
+            title=(
+                "AMOC–TAS relationship"
+                if f_years is None
+                else f"AMOC–TAS relationship – first {f_years} years"
+            ),
+            save=save_amoc_gregory,
         )

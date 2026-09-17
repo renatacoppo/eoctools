@@ -8,7 +8,7 @@ skip_years: 1
 nyears: 100
 
 # Reference experiment
-reference: "x1"
+reference: "pi"
 
 # Plot directory
 plot_directory: "plots"
@@ -17,124 +17,124 @@ comparison_plot_directory: "comparison_plots"
 # Experiments
 experiments:
 
-  #pi:
-  #  directory: "pix1"
-  #  co2: 1
-
-  #  atm: "processed/pix1_atm_annual_mean_1600-1799.nc"
-  #  oce: "processed/pix1_oce_annual_mean_1600-1799.nc"
-  #  moc: "processed/pix1_moc_annual_mean_1600-1799.nc"
-  #  warm_fix: "pix1.log" #051
-
-  #x1.1:
-  #  directory: "oix1"
-  #  co2: 1
-   #end_year: 1701 #Last complete year
-
-  #  atm: "processed/oix1_atm_annual_mean_1600-1799.nc"
-  #  oce: "processed/oix1_oce_annual_mean_1600-1799.nc"
-  #  moc: "processed/oix1_moc_annual_mean_1600-1799.nc"
-  #  warm_fix: "oix1.log" #050
-
-  #x1.2:
-  #  directory: "eex1"
-  #  co2: 1
-   #end_year: 1701 #Last complete year
-
-  #  atm: "processed/eex1_atm_annual_mean_1600-1649.nc"
-  #  oce: "processed/eex1_oce_annual_mean_1600-1649.nc"
-  #  moc: "processed/eex1_moc_annual_mean_1600-1649.nc"
-  #  warm_fix: "eex1.log" #050
-
-  #x1.3:
-  #  directory: "tex1"
-  #  co2: 1
-   #end_year: 1701 #Last complete year
-
-  #  atm: "processed/tex1_atm_annual_mean_1600-1650.nc"
-  #  oce: "processed/tex1_oce_annual_mean_1600-1650.nc"
-  #  moc: "processed/tex1_moc_annual_mean_1600-1650.nc"
-  #  warm_fix: "tex1.log" #051
-
-  #x1.4:
-  #  directory: "xex1"
-  #  co2: 1
-   #end_year: 1701 #Last complete year
-
-  #  atm: "processed/xex1_atm_annual_mean_1600-1649.nc"
-  #  oce: "processed/xex1_oce_annual_mean_1600-1649.nc"
-  #  moc: "processed/xex1_moc_annual_mean_1600-1649.nc"
-  #  warm_fix: "xex1.log" #050
-
-  #x1.5:
-  #  directory: "vex1"
-  #  co2: 1
-   #end_year: 1701 #Last complete year
-
-  #  atm: "processed/vex1_atm_annual_mean_1600-1649.nc"
-  #  oce: "processed/vex1_oce_annual_mean_1600-1649.nc"
-  #  moc: "processed/vex1_moc_annual_mean_1600-1649.nc"
-  #  warm_fix: "vex1.log" #050
-
-  x1:
-    directory: "pex1"
+  pi:
+    directory: "pix1"
     co2: 1
+
+    atm: "processed/pix1_atm_annual_mean_1600-1799.nc"
+    oce: "processed/pix1_oce_annual_mean_1600-1799.nc"
+    moc: "processed/pix1_moc_annual_mean_1600-1799.nc"
+    warm_fix: "pix1.log" #051
+
+  x1.1:
+    directory: "oix1"
+    co2: 1
+  #  end_year: 1701 #Last complete year
+
+    atm: "processed/oix1_atm_annual_mean_1600-1799.nc"
+    oce: "processed/oix1_oce_annual_mean_1600-1799.nc"
+    moc: "processed/oix1_moc_annual_mean_1600-1799.nc"
+    warm_fix: "oix1.log" #050
+
+  x1.2:
+    directory: "eex1"
+    co2: 1
+   #end_year: 1701 #Last complete year
+
+    atm: "processed/eex1_atm_annual_mean_1600-1649.nc"
+    oce: "processed/eex1_oce_annual_mean_1600-1649.nc"
+    moc: "processed/eex1_moc_annual_mean_1600-1649.nc"
+    warm_fix: "eex1.log" #050
+
+  x1.3:
+    directory: "tex1"
+    co2: 1
+   #end_year: 1701 #Last complete year
+
+    atm: "processed/tex1_atm_annual_mean_1600-1650.nc"
+    oce: "processed/tex1_oce_annual_mean_1600-1650.nc"
+    moc: "processed/tex1_moc_annual_mean_1600-1650.nc"
+    warm_fix: "tex1.log" #051
+
+  x1.4:
+    directory: "xex1"
+    co2: 1
+   #end_year: 1701 #Last complete year
+
+    atm: "processed/xex1_atm_annual_mean_1600-1649.nc"
+    oce: "processed/xex1_oce_annual_mean_1600-1649.nc"
+    moc: "processed/xex1_moc_annual_mean_1600-1649.nc"
+    warm_fix: "xex1.log" #050
+
+  x1.5:
+    directory: "vex1"
+    co2: 1
+   #end_year: 1701 #Last complete year
+
+    atm: "processed/vex1_atm_annual_mean_1600-1649.nc"
+    oce: "processed/vex1_oce_annual_mean_1600-1649.nc"
+    moc: "processed/vex1_moc_annual_mean_1600-1649.nc"
+    warm_fix: "vex1.log" #050
+
+  #x1:
+  #  directory: "pex1"
+  #  co2: 1
     
-    atm: "processed/pex1_atm_annual_mean_1600-1799.nc"
-    oce: "processed/pex1_oce_annual_mean_1600-1799.nc"
-    moc: "processed/pex1_moc_annual_mean_1600-1799.nc"
-    warm_fix: "pex1.log" #051
+  #  atm: "processed/pex1_atm_annual_mean_1600-1799.nc"
+  #  oce: "processed/pex1_oce_annual_mean_1600-1799.nc"
+  #  moc: "processed/pex1_moc_annual_mean_1600-1799.nc"
+  #  warm_fix: "pex1.log" #051
 
   # Optional experiments
-  x3:
-    directory: "nex3"
-    co2: 3
+  #x3:
+  #  directory: "nex3"
+  #  co2: 3
 
     #end_year: 1805 #Last complete year
-    atm: "processed/nex3_atm_annual_mean_1600-2099.nc"
-    oce: "processed/nex3_oce_annual_mean_1600-2099.nc"
-    moc: "processed/nex3_moc_annual_mean_1600-2099.nc"
-    warm_fix: "nex3.log" #051
+  #  atm: "processed/nex3_atm_annual_mean_1600-2099.nc"
+  #  oce: "processed/nex3_oce_annual_mean_1600-2099.nc"
+  #  moc: "processed/nex3_moc_annual_mean_1600-2099.nc"
+  #  warm_fix: "nex3.log" #051
 
-  x3.1:
-    directory: "wex3"
-    co2: 3
-
-    #end_year: 1805 #Last complete year
-    atm: "processed/wex3_atm_annual_mean_1600-1650.nc"
-    oce: "processed/wex3_oce_annual_mean_1600-1650.nc"
-    moc: "processed/wex3_moc_annual_mean_1600-1650.nc"
-    warm_fix: "wex3.log" #051
-
-  x3.2:
-    directory: "lex3"
-    co2: 3
+  #x3.1:
+  #  directory: "wex3"
+  #  co2: 3
 
     #end_year: 1805 #Last complete year
-    atm: "processed/lex3_atm_annual_mean_1600-1649.nc"
-    oce: "processed/lex3_oce_annual_mean_1600-1649.nc"
-    moc: "processed/lex3_moc_annual_mean_1600-1649.nc"
-    warm_fix: "lex3.log" #050
+  #  atm: "processed/wex3_atm_annual_mean_1600-1650.nc"
+  #  oce: "processed/wex3_oce_annual_mean_1600-1650.nc"
+  #  moc: "processed/wex3_moc_annual_mean_1600-1650.nc"
+  #  warm_fix: "wex3.log" #051
 
-  x4:
-    directory: "pex4"
-    co2: 4
+  #x3.2:
+  #  directory: "lex3"
+  #  co2: 3
 
     #end_year: 1805 #Last complete year
-    atm: "processed/pex4_atm_annual_mean_1600-1649.nc"
-    oce: "processed/pex4_oce_annual_mean_1600-1649.nc"
-    moc: "processed/pex4_moc_annual_mean_1600-1649.nc"
-    warm_fix: "pex4.log" #050
+  #  atm: "processed/lex3_atm_annual_mean_1600-1649.nc"
+  #  oce: "processed/lex3_oce_annual_mean_1600-1649.nc"
+  #  moc: "processed/lex3_moc_annual_mean_1600-1649.nc"
+  #  warm_fix: "lex3.log" #050
 
-  x6:
-    directory: "pex6"
-    co2: 6
-    end_year: 1701 #Last complete year
+  #x4:
+  #  directory: "pex4"
+  #  co2: 4
 
-    atm: "processed/pex6_atm_annual_mean_1600-1702.nc"
-    oce: "processed/pex6_oce_annual_mean_1600-1702.nc"
-    moc: "processed/pex6_moc_annual_mean_1600-1702.nc"
-    warm_fix: "pex6.log" #052
+    #end_year: 1805 #Last complete year
+  #  atm: "processed/pex4_atm_annual_mean_1600-1649.nc"
+  #  oce: "processed/pex4_oce_annual_mean_1600-1649.nc"
+  #  moc: "processed/pex4_moc_annual_mean_1600-1649.nc"
+  #  warm_fix: "pex4.log" #050
+
+  #x6:
+  #  directory: "pex6"
+  #  co2: 6
+  #  end_year: 1701 #Last complete year
+
+  #  atm: "processed/pex6_atm_annual_mean_1600-1702.nc"
+  #  oce: "processed/pex6_oce_annual_mean_1600-1702.nc"
+  #  moc: "processed/pex6_moc_annual_mean_1600-1702.nc"
+  #  warm_fix: "pex6.log" #052
 
 
 deepmip:

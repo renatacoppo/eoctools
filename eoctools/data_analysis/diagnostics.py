@@ -188,6 +188,7 @@ class Diagnostics():
             self.moc = AMOCDiagnostics(
                   moc=self.moc,
                   moc_full=self.moc_full,
+                  atm=self.atm_full,
                   reference=self.reference,
                   plot_dirs=self.plot_dirs,
                   comparison_plot_dir=self.comparison_plot_dir,

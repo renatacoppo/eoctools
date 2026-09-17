@@ -2551,3 +2551,201 @@ def plot_moc_timeseries(
 
     plt.show()
     plt.close()
+
+def plot_amoc_gregory(
+    tas_series,
+    amoc_series,
+    experiment_labels=None,
+    colors=None,
+    f_years=None,
+    xlabel="Global mean TAS (°C)",
+    ylabel="Annual maximum AMOC strength (Sv)",
+    title="AMOC–TAS relationship",
+    figsize=(7, 6),
+    dpi=150,
+    save=None,
+):
+    """
+    Create AMOC–TAS relationship plots for one or more climate experiments.
+
+    The plot shows the relationship between global mean surface temperature
+    and annual maximum AMOC strength. A linear regression is fitted to each
+    experiment to characterize the temperature dependence of AMOC strength.
+
+    The first and last simulation years are highlighted separately.
+
+    Parameters
+    ----------
+    tas_series : dict[str, xarray.DataArray]
+        Annual global mean surface temperature time series.
+
+    amoc_series : dict[str, xarray.DataArray]
+        Corresponding annual maximum AMOC strength time series.
+
+    experiment_labels : dict, optional
+        Mapping between internal experiment names and display labels.
+
+    colors : dict, optional
+        Mapping between experiment names and plot colors.
+
+    f_years : int, optional
+        Number of initial years to include in the plot.
+
+    save : str or Path, optional
+        Output filename.
+    """
+
+    fig, ax = plt.subplots(
+        figsize=figsize,
+        dpi=dpi,
+    )
+
+    # Use internal experiment names if no display labels are provided
+    if experiment_labels is None:
+        experiment_labels = {
+            exp: exp
+            for exp in tas_series
+        }
+
+    # Assign default Matplotlib colors if none are supplied
+    if colors is None:
+
+        color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+
+        colors = {
+            exp: color_cycle[i % len(color_cycle)]
+            for i, exp in enumerate(tas_series)
+        }
+
+    # Loop over experiments
+    for exp in tas_series:
+
+        tas = tas_series[exp]
+        amoc = amoc_series[exp]
+
+        # Restrict to the first N years if requested
+        if f_years is not None:
+
+            tas = tas.isel(
+                time_counter=slice(0, f_years)
+            )
+
+            amoc = amoc.isel(
+                time_counter=slice(0, f_years)
+            )
+
+        # Convert to numpy arrays
+        x = tas.values
+        y = amoc.values
+
+        # TAS and AMOC must represent the same years
+        if len(x) != len(y):
+            raise ValueError(
+                f"{exp}: TAS has {len(x)} points, "
+                f"AMOC has {len(y)} points"
+            )
+
+        # Remove years containing missing values
+        valid = np.isfinite(x) & np.isfinite(y)
+
+        x = x[valid]
+        y = y[valid]
+
+        print(
+            f"{exp}: {len(x)} valid points"
+        )
+
+        if len(x) < 2:
+            raise ValueError(
+                f"{exp}: not enough valid data points "
+                f"for regression."
+            )
+
+        # Linear regression
+        slope, intercept = np.polyfit(
+            x,
+            y,
+            1,
+        )
+
+        x_fit = np.linspace(
+            x.min(),
+            x.max(),
+            100,
+        )
+
+        y_fit = slope * x_fit + intercept
+
+        color = colors[exp]
+
+        # Connect annual values to show temporal evolution
+        ax.plot(
+            x,
+            y,
+            color=color,
+            alpha=0.6,
+            linewidth=1,
+        )
+
+        # Annual values
+        ax.scatter(
+            x,
+            y,
+            color=color,
+            s=25,
+            label=experiment_labels.get(exp, exp),
+        )
+
+        # First simulation year
+        ax.scatter(
+            x[0],
+            y[0],
+            color=color,
+            s=100,
+            marker="o",
+            edgecolor="k",
+            zorder=3,
+        )
+
+        # Last simulation year
+        ax.scatter(
+            x[-1],
+            y[-1],
+            color=color,
+            s=100,
+            marker="s",
+            edgecolor="k",
+            zorder=3,
+        )
+
+        # Regression line
+        ax.plot(
+            x_fit,
+            y_fit,
+            color=color,
+            linestyle="--",
+        )
+
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
+
+    ax.grid(
+        True,
+        linestyle="--",
+        alpha=0.4,
+    )
+
+    ax.legend(
+        title="Experiment"
+    )
+
+    fig.tight_layout()
+
+    if save is not None:
+        fig.savefig(
+            save,
+            bbox_inches="tight",
+        )
+
+    plt.show()
