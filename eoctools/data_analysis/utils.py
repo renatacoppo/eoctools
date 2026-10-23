@@ -494,7 +494,7 @@ def global_surface_net_radiation(ds):
         + ds["rlns"]
         - ds["hfss"]
         - ds["hfls"]
-        - ds["prsn"]*33400
+        - ds["prsn"]*334000
     )
 
     # Calculate latitude-based area weights
@@ -1449,6 +1449,7 @@ def plot_gregory(
     experiment_labels=None,
     colors=None,
     f_years=None,
+    deepmip_tas_ranges=None,
     xlabel="Global mean TAS (°C)",
     ylabel="TOA net radiation (W m⁻²)",
     title="Gregory plots",
@@ -1499,6 +1500,33 @@ def plot_gregory(
             exp: color_cycle[i % len(color_cycle)]
             for i, exp in enumerate(tas_series)
         }
+
+    deepmip_labels = {
+        "pi": "PI",
+        "1x": "1×CO₂",
+        "3x": "3×CO₂",
+        "6x": "6×CO₂",
+        "9x": "9×CO₂",
+    }
+    
+    if deepmip_tas_ranges is not None:
+        for exp, (tas_min, tas_max) in deepmip_tas_ranges.items():
+
+            ax.axvspan(
+                tas_min,
+                tas_max,
+                alpha=0.2,
+                zorder=0
+            )
+
+            ax.text(
+                (tas_min + tas_max) / 2,
+                0.98,
+                deepmip_labels.get(exp, exp),
+                transform=ax.get_xaxis_transform(),
+                ha="center",
+                va="top"
+            )
 
     # Loop over the experiments
     for k in tas_series:

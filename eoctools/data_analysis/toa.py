@@ -26,6 +26,7 @@ class TOADiagnostics:
                  comparison_plot_dir, 
                  experiment_labels, 
                  colors, 
+                 deepmip_tas_ranges=None,
                  skip_years=0,
                  warm_fix_activations=None):
         """
@@ -45,6 +46,11 @@ class TOADiagnostics:
         self.warm_fix_activations = (
             warm_fix_activations
             if warm_fix_activations is not None
+            else {}
+        )
+        self.deepmip_tas_ranges = (
+            deepmip_tas_ranges
+            if deepmip_tas_ranges is not None
             else {}
         )
 
@@ -251,6 +257,7 @@ class TOADiagnostics:
             experiment_labels=self.experiment_labels,
             colors=self.colors,
             f_years=f_years,
+            deepmip_tas_ranges=self.deepmip_tas_ranges,
             title=f"Gregory plots – first {f_years} years"
                 if f_years is not None
                 else "Gregory plots - all years",

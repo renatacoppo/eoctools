@@ -27,6 +27,7 @@ class DeepMIPDiagnostics:
 
         self.results = {}
         self.data = []
+        self.tas_ranges = {}
 
         self.sst_results = {}
         self.sst_data = []
@@ -95,6 +96,23 @@ class DeepMIPDiagnostics:
                 self.results[model][exp] = global_mean_tas(ds)
 
                 ds.close()
+
+        # DeepMIP TAS ranges across models for each CO2 level
+        self.tas_ranges= {}
+
+        for exp in ["pi", "1x", "3x", "6x", "9x"]:
+
+            values = [
+                float(experiments[exp])
+                for experiments in self.results.values()
+                if exp in experiments
+            ]
+
+            if values:
+                self.tas_ranges[exp] = (
+                    min(values),
+                    max(values)
+                )
 
         # DeepMIP SST
         self.sst_results = {}

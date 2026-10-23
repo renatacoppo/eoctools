@@ -350,6 +350,11 @@ class Diagnostics():
                for exp, info in self.experiments.items()
          }
         
+     def update_deepmip_tas_ranges(self):
+           """
+           Pass the calculated DeepMIP TAS ranges to the TOA diagnostics.
+           """
+           self.toa.deepmip_tas_ranges = self.deepmip.tas_ranges
         
 
 
