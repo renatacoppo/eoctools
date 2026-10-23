@@ -88,7 +88,7 @@ class SSTDiagnostics:
         # Meridional SST gradient: tropical minus high-latitude SST (°C)
         self.dT = {}
 
-    def run(self, plot=True, plot_experiment=None):
+    def run(self, plot=True, plot_experiment=None, save=True):
         """
         Run all SST diagnostics.
         The method first calculates all SST diagnostics and then, optionally, generates the corresponding figures.
@@ -102,6 +102,10 @@ class SSTDiagnostics:
             and for selecting the plot directory.
             If None, the reference experiment is used.
 
+        save : bool, default=True
+            If True, save the generated figures to disk. If False, figures are
+            displayed but not saved.
+
         Returns:
         SSTDiagnostics
             The diagnostics object containing all calculated results.
@@ -111,7 +115,7 @@ class SSTDiagnostics:
 
         # Generate figures if requested
         if plot:
-            self._plot(plot_experiment=plot_experiment)
+            self._plot(plot_experiment=plot_experiment, save=save)
 
         return self
 
@@ -240,17 +244,20 @@ class SSTDiagnostics:
             for k in self.annual_mean.keys()
         } 
 
-    def _plot(self, plot_experiment=None):
+    def _plot(self, plot_experiment=None, save=True):
         """
         Generate figures for the SST diagnostics.
         Some diagnostics show all experiments simultaneously, while others display a detailed
         map or zonal profile for one selected experiment.
-        All figures are saved in the "sst" subdirectory of the selected experiment's plot directory.
+        If save is True, all figures are saved in the "sst" subdirectory of the selected experiment's plot directory.
 
         Parameters:
         plot_experiment : str, optional
             Experiment used for single-experiment plots. If None, the
             reference experiment is used.
+
+        save : bool, default=True
+            If True, save the figures to disk. If False, figures are only displayed.
         """
         # Select experiment for single-experiment diagnostics.
         # Default: plot the reference experiment
@@ -269,10 +276,12 @@ class SSTDiagnostics:
         # Create output directory for this experiment's SST plots
         plot_dir = self.plot_dirs[exp] / "sst"
 
-        plot_dir.mkdir(
-            parents=True,
-            exist_ok=True
-        )
+        # Only create the directory if we are actually saving files
+        if save:
+            plot_dir.mkdir(
+                parents=True,
+                exist_ok=True
+            )
 
         # Mean annual SST for one experiment
         plot_mean_map(
@@ -282,7 +291,7 @@ class SSTDiagnostics:
             levels=np.arange(-40, 51, 6),
             cmap=cmocean.cm.thermal,
             colorbar_label="Sea Surface Temperature (°C)",
-            save=plot_dir / f"sst_{exp}.png",
+            save=plot_dir / f"sst_{exp}.png" if save else None,
             )
 
         # Mean annual SST for the reference experiment and anomalies for the other experiments
@@ -298,7 +307,7 @@ class SSTDiagnostics:
             anomaly_cmap=cmocean.cm.balance,
             absolute_label="Sea surface Temperature (°C)",
             anomaly_label="Temperature anomaly (°C)",
-            save=plot_dir / "sst_maps.png",
+            save=plot_dir / "sst_maps.png" if save else None,
             )
 
         # Zonal mean annual SST for one experiment
@@ -307,7 +316,7 @@ class SSTDiagnostics:
             experiment=exp,
             title="Zonal mean sea surface temperature",
             ylabel="Zonal mean SST (°C)",
-            save=plot_dir / f"sst_zonal_mean_{exp}.png"
+            save=plot_dir / f"sst_zonal_mean_{exp}.png" if save else None
             )
 
         # Zonal mean annual SST anomalies for all non-reference experiments
@@ -315,7 +324,7 @@ class SSTDiagnostics:
             anomalies=self.zonal_anom,
             title="Zonal-mean sea surface temperature anomaly",
             ylabel="Zonal-mean SST anomaly (°C)",
-            save=plot_dir / "sst_zonal_anom.png"
+            save=plot_dir / "sst_zonal_anom.png" if save else None
         )
 
         # Global mean SST vs CO2 for all experiments
@@ -326,7 +335,7 @@ class SSTDiagnostics:
             title = "Global mean SST (°C) vs CO2 concentration",
             ylim=(10.5, 40),
             xlim=(0, 7),
-            save=plot_dir / "global_mean_sst.png"
+            save=plot_dir / "global_mean_sst.png" if save else None
         )
 
         # Meridional SST gradient (tropics minus high latitudes) vs global mean SST for all experiments
@@ -337,5 +346,5 @@ class SSTDiagnostics:
             xlabel="Global mean SST (°C)",
             ylabel="Tropics – High latitude SST (°C)",
             title="Meridional SST gradient vs global mean SST",
-            save=plot_dir / "sst_gradient_vs_global_mean.png"
+            save=plot_dir / "sst_gradient_vs_global_mean.png" if save else None
         )

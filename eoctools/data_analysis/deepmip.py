@@ -93,7 +93,8 @@ class DeepMIPDiagnostics:
             own_co2_levels=None,
             own_reference=None,
             own_sst_gradient=None,
-            own_sst_results=None
+            own_sst_results=None,
+            save=True
     ):
         """
         Run all DeepMIP diagnostics.
@@ -123,6 +124,10 @@ class DeepMIPDiagnostics:
             Global mean SST of the user's own model for each experiment.
             If provided, own_sst_gradient and own_co2_levels must also be provided.
 
+        save : bool, default=True
+            If True, save the generated figures to disk. If False, figures are
+            displayed but not saved.
+
         Returns:
         DeepMIPDiagnostics
             The diagnostics object containing all calculated results.
@@ -137,7 +142,7 @@ class DeepMIPDiagnostics:
 
         # Generate figures if requested
         if plot:
-            self._plot()
+            self._plot(save=save)
 
         return self
 
@@ -367,23 +372,29 @@ class DeepMIPDiagnostics:
                 })
 
 
-    def _plot(self):
+    def _plot(self, save=True):
         """
         Generate figures for the DeepMIP diagnostics.
         Two figures are produced, each showing all DeepMIP models (and the user's own
         model, if added):
         - Global mean TAS (°C) vs CO2 concentration.
         - Meridional SST gradient vs global mean SST.
-        All figures are saved in the "deepmip" subdirectory of the plot directory.
+        If save is True, all figures are saved in the "deepmip" subdirectory of the plot directory.
+
+        Parameters:
+        save : bool, default=True
+            If True, save the figures to disk. If False, figures are only displayed.
         """
 
         # Create output directory for the DeepMIP plots
         plot_dir = self.plot_dir / "deepmip"
 
-        plot_dir.mkdir(
-            parents=True,
-            exist_ok=True,
-        )
+        # Only create the directory if we are actually saving files
+        if save:
+            plot_dir.mkdir(
+                parents=True,
+                exist_ok=True,
+            )
 
         # Filename suffix built from the compared experiment names
         experiment_string = "_".join(
@@ -401,7 +412,7 @@ class DeepMIPDiagnostics:
             title=(
                 "Global mean surface temperature vs CO₂ concentration"
             ),
-            save=save_tas,
+            save=save_tas if save else None,
             model_styles=DEEP_MIP_MODEL_STYLES
         )
 
@@ -417,7 +428,7 @@ class DeepMIPDiagnostics:
             title=(
                 "Meridional SST gradient vs global mean SST"
             ),
-            save=save_sst,
+            save=save_sst if save else None,
             model_styles=DEEP_MIP_MODEL_STYLES
         )
 

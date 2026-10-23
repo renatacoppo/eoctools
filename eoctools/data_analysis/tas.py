@@ -79,7 +79,7 @@ class TASDiagnostics:
         # Equilibrium climate sensitivity (°C per CO2 doubling); None if not computed
         self.ECS = None
 
-    def run(self, compute_ecs=False, plot=True, plot_experiment=None):
+    def run(self, compute_ecs=False, plot=True, plot_experiment=None, save=True):
         """
         Run all TAS diagnostics.
         The method first calculates all temperature diagnostics and then, optionally, generates the corresponding figures.
@@ -97,6 +97,10 @@ class TASDiagnostics:
             latitude-time evolution) and for selecting the plot directory.
             If None, the reference experiment is used.
 
+        save : bool, default=True
+            If True, save the generated figures to disk. If False, figures are
+            displayed but not saved.
+
         Returns:
         TASDiagnostics
             The diagnostics object containing all calculated results.
@@ -108,7 +112,7 @@ class TASDiagnostics:
         
         # Generate figures if requested
         if plot:
-            self._plot(plot_experiment=plot_experiment)
+            self._plot(plot_experiment=plot_experiment, save=save)
 
         return self
     
@@ -229,17 +233,20 @@ class TASDiagnostics:
         else:
             self.ECS = None
 
-    def _plot(self, plot_experiment=None):
+    def _plot(self, plot_experiment=None, save=True):
         """
         Generate figures for the TAS diagnostics.
         Some diagnostics show all experiments simultaneously, while others display a detailed
         map or latitude-time evolution for one selected experiment.
-        All figures are saved in the "tas" subdirectory of the selected experiment's plot directory.
+        If save is True, all figures are saved in the "tas" subdirectory of the selected experiment's plot directory.
 
         Parameters:
         plot_experiment : str, optional
             Experiment used for single-experiment plots. If None, the
             reference experiment is used.
+
+        save : bool, default=True
+            If True, save the figures to disk. If False, figures are only displayed.
         """
         # Select experiment for single-experiment diagnostics.
         # Default: plot the reference experiment.
@@ -258,10 +265,12 @@ class TASDiagnostics:
         # Create output directory for this experiment's TAS plots
         plot_dir = self.plot_dirs[exp] / "tas"
 
-        plot_dir.mkdir(
-            parents=True,
-            exist_ok=True
-        )
+        # Only create the directory if we are actually saving files
+        if save:
+            plot_dir.mkdir(
+                parents=True,
+                exist_ok=True
+            )
 
         # Mean annual TAS for one experiment
         plot_mean_map(
@@ -271,7 +280,7 @@ class TASDiagnostics:
             levels=np.arange(-40, 51, 6),
             cmap=cmocean.cm.thermal,
             colorbar_label="Surface Air Temperature (°C)",
-            save=plot_dir / f"tas_{exp}.png",
+            save=plot_dir / f"tas_{exp}.png" if save else None,
             )
 
         # Mean annual TAS for the reference experiment and anomalies for the other experiments
@@ -287,7 +296,7 @@ class TASDiagnostics:
             anomaly_cmap=cmocean.cm.balance,
             absolute_label="Surface Air Temperature (°C)",
             anomaly_label="Temperature anomaly (°C)",
-            save=plot_dir / "tas_maps.png",
+            save=plot_dir / "tas_maps.png" if save else None,
             )
 
         # Zonal mean annual TAS for one experiment
@@ -296,7 +305,7 @@ class TASDiagnostics:
             experiment=exp,
             title="Zonal mean surface air temperature",
             ylabel="Zonal mean TAS (°C)",
-            save=plot_dir / f"tas_zonal_mean_{exp}.png"
+            save=plot_dir / f"tas_zonal_mean_{exp}.png" if save else None
             )
 
         # Zonal mean annual TAS anomalies for all non-reference experiments
@@ -304,7 +313,7 @@ class TASDiagnostics:
             anomalies=self.zonal_anom,
             title="Zonal-mean surface air temperature anomaly",
             ylabel="Zonal-mean TAS anomaly (°C)",
-            save=plot_dir / "tas_zonal_anom.png"
+            save=plot_dir / "tas_zonal_anom.png" if save else None
         )
 
         # Zonal mean TAS time series (latitude vs time) for one experiment
@@ -315,7 +324,7 @@ class TASDiagnostics:
             cmap=cmocean.cm.thermal,
             colorbar_label="Surface Air Temperature (°C)",
             levels=20,
-            save=plot_dir / f"tas_zonal_time_{exp}.png"
+            save=plot_dir / f"tas_zonal_time_{exp}.png" if save else None
         )
 
 
@@ -330,7 +339,7 @@ class TASDiagnostics:
             title = "Global mean TAS (°C) vs CO2 concentration",
             ylim=(10.5, 40),
             xlim=(0, 7),
-            save=plot_dir / "global_mean_tas.png"
+            save=plot_dir / "global_mean_tas.png" if save else None
         )
 
         # Annual global mean TAS time series for all experiments
@@ -338,5 +347,5 @@ class TASDiagnostics:
             series=self.tas_ts,
             ylabel="Global mean TAS (°C)",
             title="Annual global mean TAS",
-            save=plot_dir / "global_mean_tas_timeseries.png"
+            save=plot_dir / "global_mean_tas_timeseries.png" if save else None
         )

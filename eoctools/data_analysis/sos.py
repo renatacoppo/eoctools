@@ -64,7 +64,7 @@ class SOSDiagnostics:
         # Latitude-time evolution of zonal mean SOS
         self.zonal_ts = {}
 
-    def run(self, plot=True, plot_experiment=None):
+    def run(self, plot=True, plot_experiment=None, save=True):
         """
         Run all SOS diagnostics.
         The method first calculates all salinity diagnostics and then, optionally, generates the corresponding figures.
@@ -77,6 +77,10 @@ class SOSDiagnostics:
             Experiment used for single-experiment plots (mean map) and for
             selecting the plot directory. If None, the reference experiment is used.
 
+        save : bool, default=True
+            If True, save the generated figures to disk. If False, figures are
+            displayed but not saved.
+
         Returns:
         SOSDiagnostics
             The diagnostics object containing all calculated results.
@@ -86,7 +90,7 @@ class SOSDiagnostics:
 
         # Generate figures if requested
         if plot:
-            self._plot(plot_experiment=plot_experiment)
+            self._plot(plot_experiment=plot_experiment, save=save)
 
         return self
     
@@ -194,17 +198,20 @@ class SOSDiagnostics:
         }
 
 
-    def _plot(self, plot_experiment=None):
+    def _plot(self, plot_experiment=None, save=True):
         """
         Generate figures for the SOS diagnostics.
         Produces a mean salinity map for one selected experiment and a panel with the
         reference mean salinity and the anomalies of the other experiments.
-        All figures are saved in the "sos" subdirectory of the selected experiment's plot directory.
+        If save is True, all figures are saved in the "sos" subdirectory of the selected experiment's plot directory.
 
         Parameters:
         plot_experiment : str, optional
             Experiment used for single-experiment plots. If None, the
             reference experiment is used.
+
+        save : bool, default=True
+            If True, save the figures to disk. If False, figures are only displayed.
         """
         # Select experiment for single-experiment diagnostics.
         # Default: plot the reference experiment.
@@ -223,10 +230,12 @@ class SOSDiagnostics:
         # Create output directory for this experiment's SOS plots
         plot_dir = self.plot_dirs[exp] / "sos"
 
-        plot_dir.mkdir(
-            parents=True,
-            exist_ok=True
-        )
+        # Only create the directory if we are actually saving files
+        if save:
+            plot_dir.mkdir(
+                parents=True,
+                exist_ok=True
+            )
 
         # Mean annual SOS for one experiment
         plot_mean_map(
@@ -236,7 +245,7 @@ class SOSDiagnostics:
             levels=np.arange(30.5, 36.5, 0.5),
             cmap=cmocean.cm.haline,
             colorbar_label="Salinity (1e-3)",
-            save=plot_dir / f"sos_{exp}.png",
+            save=plot_dir / f"sos_{exp}.png" if save else None,
             )
 
         # Mean annual SOS for the reference experiment and anomalies (relative to the
@@ -253,5 +262,5 @@ class SOSDiagnostics:
             anomaly_cmap=cmocean.cm.balance,
             absolute_label="Salinity (1e-3)",
             anomaly_label="Salinity anomaly (1e-3)",
-            save=plot_dir / "sos_maps.png",
+            save=plot_dir / "sos_maps.png" if save else None,
             )
