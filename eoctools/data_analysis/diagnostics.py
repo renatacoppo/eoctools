@@ -10,6 +10,7 @@ from sst import SSTDiagnostics
 from sos import SOSDiagnostics
 from deepmip import DeepMIPDiagnostics
 from amoc import AMOCDiagnostics
+from energybalance import EnergyBalanceDiagnostics
 from utils import load_last_years, load_simulation, count_warm_fix_activations
 
 
@@ -194,6 +195,16 @@ class Diagnostics():
                   comparison_plot_dir=self.comparison_plot_dir,
                   skip_years=self.skip_years,
                   colors=self.colors,
+                  experiment_labels=self.experiment_labels
+            )
+
+            # Energy balance analysis (Lunt et al., 2021, Fig. 4)
+            # The final "nyears" are used, since the analysis assumes equilibrated simulations.
+            self.eba = EnergyBalanceDiagnostics(
+                  atm=self.atm,
+                  reference=self.reference,
+                  plot_dirs=self.plot_dirs,
+                  comparison_plot_dir=self.comparison_plot_dir,
                   experiment_labels=self.experiment_labels
             )
 
