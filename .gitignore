@@ -4,3 +4,7 @@ __pycache__/
 
 # plots produced by the diagnostics
 eoctools/data_analysis/*.png
+
+# per-machine configs (copy from the *.example.yml templates)
+eoctools/remapping/config_remap.yml
+eoctools/data_analysis/config_diag.yml

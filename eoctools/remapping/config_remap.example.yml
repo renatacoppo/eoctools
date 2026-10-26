@@ -3,7 +3,7 @@ cdo_path: /usr/local/apps/cdo/2.4.0/bin/cdo
 base_output: /lus/h2resw01/hpcperm/ecme3497/data-analysis/epochal/ # output folder
 
 experiments:
-  pix1: /lus/h2resw01/scratch/itcv/ece4/pix1/output/ # input folder
+  pix1: /lus/h2resw01/scratch/ecme3497/ece4/pix1/output/ # input folder
 
 variables:
   atmosphere: tas,alb,ts,pr,rsut,rlut,rsdt,rsns,rlns,hfss,hfls,prsn # for cdo
