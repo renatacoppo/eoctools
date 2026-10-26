@@ -85,34 +85,34 @@ experiments:
     moc: "processed/pex1_moc_annual_mean_1600-1899.nc"
     warm_fix: "pex1.log" #051
 
-  x1.6:
-    directory: "aer1"
-    co2: 1
+  #x1.6:
+  #  directory: "aer1"
+  #  co2: 1
    #end_year: 1701 #Last complete year
 
-    atm: "processed/aer1_atm_annual_mean_1600-1649.nc"
-    oce: "processed/aer1_oce_annual_mean_1600-1649.nc"
-    moc: "processed/aer1_moc_annual_mean_1600-1649.nc"
+  #  atm: "processed/aer1_atm_annual_mean_1600-1649.nc"
+  #  oce: "processed/aer1_oce_annual_mean_1600-1649.nc"
+  #  moc: "processed/aer1_moc_annual_mean_1600-1649.nc"
   #  warm_fix: "pox1.log" #050
 
-  x1.7:
-    directory: "not1"
-    co2: 1
+  #x1.7:
+  #  directory: "not1"
+  #  co2: 1
    #end_year: 1701 #Last complete year
 
-    atm: "processed/not1_atm_annual_mean_1600-1649.nc"
-    oce: "processed/not1_oce_annual_mean_1600-1649.nc"
-    moc: "processed/not1_moc_annual_mean_1600-1649.nc"
+  #  atm: "processed/not1_atm_annual_mean_1600-1649.nc"
+  #  oce: "processed/not1_oce_annual_mean_1600-1649.nc"
+  #  moc: "processed/not1_moc_annual_mean_1600-1649.nc"
   #  warm_fix: "pox1.log" #050
 
-  x1.8:
-    directory: "veg1"
-    co2: 1
+  #x1.8:
+  #  directory: "veg1"
+  #  co2: 1
    #end_year: 1701 #Last complete year
 
-    atm: "processed/veg1_atm_annual_mean_1600-1649.nc"
-    oce: "processed/veg1_oce_annual_mean_1600-1649.nc"
-    moc: "processed/veg1_moc_annual_mean_1600-1649.nc"
+  #  atm: "processed/veg1_atm_annual_mean_1600-1649.nc"
+  #  oce: "processed/veg1_oce_annual_mean_1600-1649.nc"
+  #  moc: "processed/veg1_moc_annual_mean_1600-1649.nc"
   #  warm_fix: "pox1.log" #050
 
   x1.9:
@@ -120,9 +120,9 @@ experiments:
     co2: 1
    #end_year: 1701 #Last complete year
 
-    atm: "processed/soil_atm_annual_mean_1600-1649.nc"
-    #oce: "processed/soil_oce_annual_mean_1600-1604.nc"
-    moc: "processed/soil_moc_annual_mean_1600-1649.nc"
+    atm: "processed/soil_atm_annual_mean_1600-1820.nc"
+    oce: "processed/soil_oce_annual_mean_1600-1820.nc"
+    moc: "processed/soil_moc_annual_mean_1600-1820.nc"
   #  warm_fix: "pox1.log" #050
 
   #x1.7:
