@@ -1,1 +1,6 @@
-*egg.info
+*.egg-info/
+__pycache__/
+.ipynb_checkpoints/
+
+# plots produced by the diagnostics
+eoctools/data_analysis/*.png

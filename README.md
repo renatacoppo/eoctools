@@ -67,13 +67,21 @@ The main entry point is:
 ## Command-line options
 
 ```text
--c, --config   Path to the YAML configuration file. Required.
+-c, --config    Path to the YAML configuration file. Required.
+-p, --product   Dataset to process: atm, oce, moc, or all. Default: all.
+--overwrite     Overwrite output files that already exist. Default: existing files are skipped.
 ```
 
 Example:
 
 ```bash
 ./eoctools/remapping/remap.py -c eoctools/remapping/config_remap.yml
+```
+
+Remap only the atmosphere files, replacing an existing output (e.g. after adding a variable to the config):
+
+```bash
+./eoctools/remapping/remap.py -c eoctools/remapping/config_remap.yml -p atm --overwrite
 ```
 
 or, on an HPC system, submit the provided batch script:

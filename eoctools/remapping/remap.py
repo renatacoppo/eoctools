@@ -34,7 +34,8 @@ def process_dataset(cdo,
                     output_prefix,
                     experiment_name,
                     exclude_filter=None,
-                    grid="r180x90"
+                    grid="r180x90",
+                    overwrite=False
                     ):
     """
     Select variables, calculate annual means, remap,
@@ -67,6 +68,10 @@ def process_dataset(cdo,
     grid : str
         CDO target grid.
         r180x90 = 2° x 2°
+
+    overwrite : bool
+        If True, an existing output file is replaced.
+        If False (default), it is left untouched.
     """
 
     os.makedirs(output_folder, exist_ok=True)
@@ -93,16 +98,27 @@ def process_dataset(cdo,
 
     print(f"Found {len(files)} files for {output_prefix}")
 
+    # Output filename is known from the input filenames, so check it
+    # before doing any (expensive) processing
+    years = [extract_year(os.path.basename(f)) for f in files]
+
+    output_file = os.path.join(
+        output_folder,
+        f"{experiment_name}_{output_prefix}_annual_mean_{min(years)}-{max(years)}.nc"
+    )
+
+    if os.path.exists(output_file):
+        if not overwrite:
+            print(f"Already exists: {output_file} (use --overwrite to replace it)")
+            return
+        print(f"Overwriting: {output_file}")
+
     annual_list = []
-    years = []
 
     for infile in files:
 
         filename = os.path.basename(infile)
         print(f"Processing {filename}")
-
-        year = extract_year(filename)
-        years.append(year)
 
         # temporary files
         tmp_file = tempfile.NamedTemporaryFile(
@@ -139,18 +155,6 @@ def process_dataset(cdo,
         dim="time_counter"
     )
 
-    first_year = min(years)
-    last_year = max(years)
-
-    output_file = os.path.join(
-        output_folder,
-        f"{experiment_name}_{output_prefix}_annual_mean_{first_year}-{last_year}.nc"
-    )
-
-    if os.path.exists(output_file):
-        print(f"Already exists: {output_file}")
-        return
-
     final.to_netcdf(
         output_file,
         encoding={
@@ -169,7 +173,8 @@ def annual_mean_moc(input_folder,
                     output_folder,
                     filename_filter, 
                     variables,
-                    experiment_name
+                    experiment_name,
+                    overwrite=False
                     ):
     """
     Compute annual means for zonal-mean diagnostics (msftyz), and save a single output file.
@@ -187,6 +192,10 @@ def annual_mean_moc(input_folder,
         
     variables : list[str]
         Variables to retain.
+
+    overwrite : bool
+        If True, an existing output file is replaced.
+        If False (default), it is left untouched.
     """
 
     os.makedirs(output_folder, exist_ok=True)
@@ -199,9 +208,20 @@ def annual_mean_moc(input_folder,
         print("No matching files found.")
         return
 
-    annual_list = []
+    years = [extract_year(os.path.basename(f)) for f in files]
 
-    years = []
+    output_file = os.path.join(
+        output_folder,
+        f"{experiment_name}_moc_annual_mean_{min(years)}-{max(years)}.nc"
+    )
+
+    if os.path.exists(output_file):
+        if not overwrite:
+            print(f"Already exists: {output_file} (use --overwrite to replace it)")
+            return
+        print(f"Overwriting: {output_file}")
+
+    annual_list = []
 
     for file in files:
 
@@ -226,21 +246,8 @@ def annual_mean_moc(input_folder,
 
             annual_list.append(annual)
 
-        # Extract year from filename
-        match = re.search(r"(\d{4})-(\d{4})", os.path.basename(file))
-        if match:
-            years.append(int(match.group(1)))
-
     # Concatenate all annual means
     final = xr.concat(annual_list, dim="time_counter")
-
-    first_year = min(years)
-    last_year = max(years)
-
-    output_file = os.path.join(
-        output_folder,
-        f"{experiment_name}_moc_annual_mean_{first_year}-{last_year}.nc"
-    )
 
     final.to_netcdf(
         output_file,
@@ -255,7 +262,7 @@ def annual_mean_moc(input_folder,
     print(f"\n Saved {output_file}")
 
 
-def main(config_file, product="all"):
+def main(config_file, product="all", overwrite=False):
 
     
     config = load_yaml(config_file)
@@ -282,8 +289,9 @@ def main(config_file, product="all"):
                 output_folder=os.path.join(base_output, exp_name, "processed"),
                 filename_filter=filters["moc"],
                 variables=moc_vars,
-                experiment_name=exp_name
-            ) 
+                experiment_name=exp_name,
+                overwrite=overwrite
+            )
 
         # Atmosphere
         if product in ("atm", "all"):
@@ -303,7 +311,8 @@ def main(config_file, product="all"):
                 remap_method="remapcon",
                 output_prefix="atm",
                 experiment_name=exp_name,
-                exclude_filter=filters["atm_exclude"]
+                exclude_filter=filters["atm_exclude"],
+                overwrite=overwrite
             )
 
         # Ocean
@@ -323,7 +332,8 @@ def main(config_file, product="all"):
                 variables=oce_vars,
                 remap_method="remapbil",
                 output_prefix="oce",
-                experiment_name_name=exp_name
+                experiment_name=exp_name,
+                overwrite=overwrite
             )
 
 
@@ -346,9 +356,16 @@ if __name__ == "__main__":
         help="Select which dataset to process: atm, oce, moc, or all (default)"
     )
 
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite output files that already exist (default: skip them)"
+    )
+
     args = parser.parse_args()
 
     main(
         args.config,
-        product=args.product
+        product=args.product,
+        overwrite=args.overwrite
         )
