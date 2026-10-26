@@ -1,13 +1,17 @@
 import numpy as np
 import yaml
+import matplotlib.pyplot as plt
 from pathlib import Path
+
 from tas import TASDiagnostics
 from pr import PRDiagnostics
 from toa import TOADiagnostics
 from sst import SSTDiagnostics
 from sos import SOSDiagnostics
 from deepmip import DeepMIPDiagnostics
-from utils import load_last_years, load_simulation
+from amoc import AMOCDiagnostics
+from energybalance import EnergyBalanceDiagnostics
+from utils import load_last_years, load_simulation, count_warm_fix_activations
 
 
 class Diagnostics():
@@ -64,12 +68,35 @@ class Diagnostics():
             # Base directory containing all experiment folders
             self.base_path = Path(config["base_path"])
 
+            # Number of initial simulation years to skip
+            self.skip_years = config.get("skip_years", 0)
+            
             # Number of final years used for equilibrium diagnostics
             self.nyears = config["nyears"]
 
-          
+            # Reference experiment
             self.reference = config["reference"]
+
+            # Experiment definitions
             self.experiments = config["experiments"]
+
+            # Warm-fix configuration
+            # Construct the full path to the warm-fix log for each experiment
+            # The YAML stores the log rellative to the experiment directory
+            self.warm_fix_logs = {
+                  exp: (
+                        self.base_path
+                        / info["directory"]
+                        / info["warm_fix"]
+                  )
+                  for exp, info in self.experiments.items()
+                  if info.get("warm_fix") is not None
+            }
+            # Count warm-fix activations for each experiment
+            self.warm_fix_activations = {
+                  exp: count_warm_fix_activations(log_file)
+                  for exp, log_file in self.warm_fix_logs.items()
+            }
 
             # Configuration for DeepMIP comparison datasets
             self.deepmip_config = config["deepmip"]
@@ -87,10 +114,19 @@ class Diagnostics():
             self.atm_full = {}
             self.oce = {}
             self.moc = {}
+            self.moc_full = {}
 
             #Load model data
             #----------------
             self._load_data()
+
+            # Consistent colors for all experiments across diagnostics
+            color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+
+            self.colors = {
+                  exp: color_cycle[i % len(color_cycle)]
+                  for i, exp in enumerate(self.atm_full.keys())
+            }
 
             #Initialize variable-specific diagnostics 
             #----------------------------------------
@@ -112,13 +148,17 @@ class Diagnostics():
 
             # Top-of-atmosphere radiation diagnostics
             # The full atmospheric simulations are used here because diagnostics
-            # such as Gregory plots require the temporal evolution of the model.
+            # such as Gregory plots and time-series plots require the temporal evolution of the simulation.
+            # Initial spin-up years can be removed indide TOADiagnostics using skip_years.
             self.toa = TOADiagnostics(
                  atm=self.atm_full,
                  reference=self.reference,
                  plot_dirs=self.plot_dirs,
                  comparison_plot_dir=self.comparison_plot_dir,
-                 experiment_labels=self.experiment_labels
+                 experiment_labels=self.experiment_labels,
+                 colors=self.colors,
+                 skip_years=self.skip_years,
+                 warm_fix_activations=self.warm_fix_activations,
             )
 
             # Sea surface temperature diagnostics
@@ -145,10 +185,35 @@ class Diagnostics():
                  experiment_dirs=self.experiment_dirs
             )
 
+            # MOC diagnostics
+            self.moc = AMOCDiagnostics(
+                  moc=self.moc,
+                  moc_full=self.moc_full,
+                  atm=self.atm_full,
+                  reference=self.reference,
+                  plot_dirs=self.plot_dirs,
+                  comparison_plot_dir=self.comparison_plot_dir,
+                  skip_years=self.skip_years,
+                  colors=self.colors,
+                  experiment_labels=self.experiment_labels
+            )
+
+            # Energy balance analysis (Lunt et al., 2021, Fig. 4)
+            # The final "nyears" are used, since the analysis assumes equilibrated simulations.
+            self.eba = EnergyBalanceDiagnostics(
+                  atm=self.atm,
+                  reference=self.reference,
+                  plot_dirs=self.plot_dirs,
+                  comparison_plot_dir=self.comparison_plot_dir,
+                  experiment_labels=self.experiment_labels
+            )
+
             #self.zos = {}
             #self.so = {}
             #self.thetao = {}
             #self.moc = {}
+
+
                   
                   
      # Data loading  
@@ -189,7 +254,6 @@ class Diagnostics():
                        # It can be used for diagnostics that depend on the temporal evolution of the simulation (e.g., TOA/Gregory plots)
                        self.atm_full[exp] = load_simulation(
                             file_path,
-                            skip_years=0,
                             end_year=end_year
                        )
                 
@@ -202,8 +266,17 @@ class Diagnostics():
                 # MOC data
                   if "moc" in info:
                        
+                       file_path=directory / info["moc"]
+                       
                        # Load only the last N years: used by diagnostics representing the equilibrated state
                        self.moc[exp] = load_last_years(directory / info["moc"], nyears=self.nyears, end_year=end_year)
+
+                      # Load the complete simulation after removing the initial 10-year spin-up period.
+                      # It can be used for diagnostics that depend on the temporal evolution of the simulation (e.g., TOA/Gregory plots)
+                       self.moc_full[exp] = load_simulation(
+                            file_path,
+                            end_year=end_year
+                       )
 
      # Experiment metadata
      #--------------------
@@ -288,6 +361,11 @@ class Diagnostics():
                for exp, info in self.experiments.items()
          }
         
+     def update_deepmip_tas_ranges(self):
+           """
+           Pass the calculated DeepMIP TAS ranges to the TOA diagnostics.
+           """
+           self.toa.deepmip_tas_ranges = self.deepmip.tas_ranges
         
 
 

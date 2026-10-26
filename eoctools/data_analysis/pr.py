@@ -87,7 +87,7 @@ class PRDiagnostics:
 
 
 
-    def run(self, plot=True, plot_experiment=None):
+    def run(self, plot=True, plot_experiment=None, save=True):
         """
         Run all precipitation diagnostics.
         The method first calculated the precipitation diagnostics and, optionally, produces the associated figures.
@@ -100,6 +100,10 @@ class PRDiagnostics:
             Experiment used for diagnostics that display a single experiment.
             If None, the reference experiment is used.
 
+        save : bool, default=True
+            If True, save the generated figures to disk. If False, figures are
+            displayed but not saved.
+
         Returns:
         PRDiagnostics
             The diagnostics object containng the calculated results.
@@ -108,7 +112,7 @@ class PRDiagnostics:
         self._calculate()
         
         if plot:
-            self._plot(plot_experiment=plot_experiment)
+            self._plot(plot_experiment=plot_experiment, save=save)
 
         return self
     
@@ -193,7 +197,7 @@ class PRDiagnostics:
         }
 
 
-    def _plot(self, plot_experiment=None):
+    def _plot(self, plot_experiment=None, save=True):
         """
         Generate precipitation diagnostic figures.
 
@@ -201,6 +205,9 @@ class PRDiagnostics:
         plot_experiment : str, optional
             Experiment used for plots that display a single experiment.
             If None, the reference experiment is used.
+
+        save : bool, default=True
+            If True, save the figures to disk. If False, figures are only displayed.
 
         Raises:
         ValueError
@@ -223,10 +230,12 @@ class PRDiagnostics:
         # Create the output directory foor precipitation diagnostics
         plot_dir = self.plot_dirs[exp] / "pr"
 
-        plot_dir.mkdir(
-            parents=True,
-            exist_ok=True
-        )
+        # Only create the directory if we are actually saving files
+        if save:
+            plot_dir.mkdir(
+                parents=True,
+                exist_ok=True
+            )
 
         # Mean annual pr for one experiment
         plot_mean_map(
@@ -236,7 +245,7 @@ class PRDiagnostics:
             levels=np.arange(0, 20.5, 0.5),
             cmap=cmocean.cm.rain,
             colorbar_label="Precipitation (mm/day)",
-            save=plot_dir / f"pr_{exp}.png",
+            save=plot_dir / f"pr_{exp}.png" if save else None,
             )
 
         # Mean annual pr for the reference experiment and precipitation anomalies
@@ -252,7 +261,7 @@ class PRDiagnostics:
             anomaly_cmap=cmocean.cm.balance,
             absolute_label="Precipitation (mm/day)",
             anomaly_label="Precipitation anomaly (mm/day)",
-            save=plot_dir / "pr_maps.png",
+            save=plot_dir / "pr_maps.png" if save else None,
             )
 
         # Zonal mean annual pr for one experiment
@@ -261,7 +270,7 @@ class PRDiagnostics:
             experiment=exp,
             title="Zonal mean precipition",
             ylabel="Zonal mean PR (mm/day)",
-            save=plot_dir / f"pr_zonal_mean_{exp}.png"
+            save=plot_dir / f"pr_zonal_mean_{exp}.png" if save else None
             )
 
         # Zonal mean annual pr anomalies
@@ -269,7 +278,7 @@ class PRDiagnostics:
             anomalies=self.zonal_anom,
             title="Zonal-mean precipitation anomaly",
             ylabel="Zonal-mean Pr anomaly (mm/day)",
-            save=plot_dir / "pr_zonal_anom.png"
+            save=plot_dir / "pr_zonal_anom.png" if save else None
         )
 
         # Zonal precipitation evolution for one experiment
@@ -280,7 +289,7 @@ class PRDiagnostics:
             cmap=cmocean.cm.rain,
             colorbar_label="Precipitation (mm/day)",
             levels=20,
-            save=plot_dir / f"pr_zonal_time_{exp}.png"
+            save=plot_dir / f"pr_zonal_time_{exp}.png" if save else None
         )
 
 
@@ -293,5 +302,5 @@ class PRDiagnostics:
             title="Global mean precipitation vs CO₂",
             ylim=(2.5, 5),
             xlim=(-0.1, 3),
-            save=plot_dir / "global_mean_pr_logco2.png"
+            save=plot_dir / "global_mean_pr_logco2.png" if save else None
         )

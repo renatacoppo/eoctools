@@ -75,6 +75,16 @@ def main(config_file, diagnostics, experiment=None, no_plots=False):
         )
 
     # ==========================================================
+    # Energy balance analysis
+    # ==========================================================
+    if "eba" in diagnostics:
+        print("\n========== ENERGY BALANCE ==========\n")
+
+        diag.eba.run(
+            plot=plot
+        )
+
+    # ==========================================================
     # DeepMIP diagnostics
     # ==========================================================
 
@@ -133,6 +143,12 @@ def main(config_file, diagnostics, experiment=None, no_plots=False):
         )
 
         parser.add_argument(
+            "--eba",
+            action="store_true",
+            help="Run energy balance analysis (Lunt et al., 2021)"
+        )
+
+        parser.add_argument(
             "--deepmip",
             action="store_true",
             help="Run DeepMIP comparison diagnostics"
@@ -166,6 +182,7 @@ def main(config_file, diagnostics, experiment=None, no_plots=False):
                 "toa",
                 "sst",
                 "sos",
+                "eba",
                 "deepmip"
             ]
         else:
@@ -185,6 +202,9 @@ def main(config_file, diagnostics, experiment=None, no_plots=False):
 
             if args.sos:
                 diagnostics.append("sos")
+
+            if args.eba:
+                diagnostics.append("eba")
 
             if args.deepmip:
                 diagnostics.append("deepmip")
